@@ -8,6 +8,8 @@ import './App.css';
 function App() {
   return (
     <Authenticator
+          loginMechanisms={['username']}
+      signUpAttributes={['email']}
       components={{
         Header() {
           return (
@@ -27,15 +29,25 @@ function App() {
         },
       }}
       formFields={{
-        signUp: {
-          email: {
-            label: 'Email',
-            placeholder: 'Enter your email',
+         signIn: {
+          username: {
+            label: 'Username',
+            placeholder: 'Enter your username',
             order: 1,
           },
+        },
+        signUp: {
           username: {
             label: 'Username',
             placeholder: 'Choose a username',
+            isRequired: true,
+            order: 1,
+            validate: (value: string) =>
+              /^[a-zA-Z0-9]+$/.test(value) ? null : 'Only letters and numbers are allowed',
+          },
+          email: {
+            label: 'Email',
+            placeholder: 'Enter your email',
             order: 2,
           },
         },

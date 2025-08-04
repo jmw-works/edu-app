@@ -1,7 +1,12 @@
 import { Flex, Heading, Text, View, useTheme } from '@aws-amplify/ui-react';
 
+interface UserAttributes {
+  email?: string;
+  [key: string]: unknown;
+}
+
 interface UserStatsPanelProps {
-  user: any;
+  user: { username?: string };
   currentXP: number;
   maxXP: number;
   percentage: number;
@@ -36,7 +41,7 @@ export function UserStatsPanel({
     >
       <Heading level={4} marginBottom="small">User Stats</Heading>
       <Text fontSize="small" marginBottom="xs">
-        Email: {user.attributes?.email || 'N/A'}
+  User: {user.username || 'N/A'}
       </Text>
       <Text fontWeight="bold" marginBottom="xs">
         XP: {currentXP} / {maxXP}

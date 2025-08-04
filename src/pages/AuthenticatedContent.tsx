@@ -1,6 +1,6 @@
 // src/pages/AuthenticatedContent.tsx
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Header } from '../components/Header';
 import { QuizSection } from '../components/QuizSection';
 import { useQuizData } from '../hooks/useQuizData';
@@ -16,6 +16,7 @@ import type { UserProgress } from '../types/UserProgressTypes';
 interface AuthenticatedContentProps {
   user: {
     userId: string;
+    username?: string;
     attributes: {
       name?: string;
       email?: string;
@@ -33,6 +34,7 @@ export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProp
 
   const userName = useMemo(() => {
     return (
+      user.username ||
       user.attributes?.name ||
       user.attributes?.email?.split('@')[0] ||
       'User'
