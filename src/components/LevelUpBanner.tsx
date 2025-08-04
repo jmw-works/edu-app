@@ -1,10 +1,18 @@
-import { Card, Flex, Heading, Text, Badge, Icon } from '@aws-amplify/ui-react';
+import { Card, Flex, Heading, Text, Badge, Icon, type BadgeProps } from '@aws-amplify/ui-react';
 
 interface LevelUpBannerProps {
   onClose: () => void;
 }
 
 export function LevelUpBanner({ onClose }: LevelUpBannerProps) {
+  const labels = ['XP', 'Badge', 'Streak'] as const;
+  const descriptions = ['Experience', 'Achievements', 'Consistency'] as const;
+  const variations: [BadgeProps['variation'], BadgeProps['variation'], BadgeProps['variation']] = [
+    'success',
+    'info',
+    'warning',
+  ];
+
   return (
     <Card
       variation="elevated"
@@ -20,17 +28,19 @@ export function LevelUpBanner({ onClose }: LevelUpBannerProps) {
     >
       <Flex direction="row" justifyContent="space-between" alignItems="center">
         <Flex direction="column" width="50%">
-          <Heading level={3} marginBottom="small" color="#fff">Ready to Level Up?</Heading>
+          <Heading level={3} marginBottom="small" color="#fff">
+            Ready to Level Up?
+          </Heading>
           <Text color="#fff">
             Dive into our gamified quizzes! Earn XP, unlock new sections, and show off your badges as you build a streak!
           </Text>
         </Flex>
 
         <Flex direction="row" gap="large" alignItems="center" width="40%">
-          {['XP', 'Badge', 'Streak'].map((label, i) => (
-            <Flex direction="column" alignItems="center" gap="xs" key={i}>
+          {labels.map((label, i) => (
+            <Flex direction="column" alignItems="center" gap="xs" key={label}>
               <Badge
-                variation={['success', 'info', 'warning'][i]}
+                variation={variations[i]}
                 style={{
                   width: '60px',
                   height: '60px',
@@ -44,7 +54,7 @@ export function LevelUpBanner({ onClose }: LevelUpBannerProps) {
                 {label}
               </Badge>
               <Text fontSize="small" color="#fff">
-                {['Experience', 'Achievements', 'Consistency'][i]}
+                {descriptions[i]}
               </Text>
             </Flex>
           ))}
@@ -67,4 +77,6 @@ export function LevelUpBanner({ onClose }: LevelUpBannerProps) {
     </Card>
   );
 }
+
+
 

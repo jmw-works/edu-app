@@ -1,4 +1,6 @@
-import { useRef, useState } from 'react';
+// src/AuthenticatedContent.tsx
+
+import { useRef, useState, useMemo } from 'react';
 import { Header } from './components/Header';
 import { QuizSection } from './components/QuizSection';
 import { useQuizData } from './hooks/useQuizData';
@@ -9,21 +11,17 @@ import { LevelUpBanner } from './components/LevelUpBanner';
 import { UserStatsPanel } from './components/UserStatsPanel';
 import { Flex, Heading } from '@aws-amplify/ui-react';
 
-
-
 interface AuthenticatedContentProps {
   user: {
     userId: string;
     attributes: {
       name?: string;
       email?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   };
-  signOut?: (data?: any) => void;
+  signOut?: () => void;
 }
-
-
 
 export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProps) {
   const { questions, progress, handleAnswer } = useQuizData(user.userId);
@@ -32,23 +30,29 @@ export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProp
   const headerHeight = useHeaderHeight(headerRef);
   const spacing = 50;
 
-  const userName =
-    user.attributes?.name ||
-    user.attributes?.email?.split('@')[0] ||
-    'User';
+  const userName = useMemo(() => {
+    return (
+      user.attributes?.name ||
+      user.attributes?.email?.split('@')[0] ||
+      'User'
+    );
+  }, [user]);
 
   const [showBanner, setShowBanner] = useState(true);
+
   const maxXP = 100;
-  const currentXP = progress.totalXP || 0;
+  const currentXP = progress.totalXP ?? 0;
   const percentage = calculateXPProgress(currentXP, maxXP);
 
-  const sectionCompletions = sections.map((sec) => {
-    const secQuestions = questions.filter(q => q.section === sec.number);
-    return (
-      secQuestions.length === 0 ||
-      secQuestions.every(q => progress.answeredQuestions?.includes(q.id))
-    );
-  });
+  const sectionCompletions = useMemo(() => {
+    return sections.map((sec) => {
+      const secQuestions = questions.filter(q => q.section === sec.number);
+      return (
+        secQuestions.length === 0 ||
+        secQuestions.every(q => progress.answeredQuestions?.includes(q.id))
+      );
+    });
+  }, [questions, progress.answeredQuestions]);
 
   return (
     <>
@@ -62,7 +66,7 @@ export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProp
         maxWidth="1400px"
         margin="0 auto"
       >
-        {/* Left Column: Content */}
+        {/* Left Column */}
         <Flex direction="column" flex="1">
           {showBanner && (
             <LevelUpBanner onClose={() => setShowBanner(false)} />
@@ -105,6 +109,7 @@ export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProp
     </>
   );
 }
+
 
 
 
