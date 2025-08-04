@@ -23,7 +23,16 @@ dist-ssr
 *.sln
 *.sw?
 
-# amplify
-.amplify
-amplify_outputs*
+# AWS Amplify (local config, backend, and sandbox artifacts)
+.amplify/
+amplify/
 amplifyconfiguration*
+amplify_outputs*    # <-- allows ignoring root-level outputs
+
+# BUT! Don't ignore the file in public for deployment!
+!public/amplify_outputs.json
+
+# If using Gen2 sandbox, ignore only the root file,
+# but allow the public one to be checked in:
+/amplify_outputs.json
+
