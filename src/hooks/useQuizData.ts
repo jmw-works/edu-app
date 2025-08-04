@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
-import type { Schema } from '../amplify/data/resource';
+import type { Schema } from '../../amplify/data/resource'; // Adjust path as needed
+import type { QuestionWithAnswers } from '../types/QuestionTypes';
 
 const client = generateClient<Schema>();
-
-type QuestionWithAnswers = Omit<Schema['Question']['type'], 'answers'> & {
-  answers: Schema['Answer']['type'][];
-};
 
 type UserProgress = Schema['UserProgress']['type'];
 
@@ -85,7 +82,9 @@ export function useQuizData(userId: string) {
         });
         if (createErrors) console.error('Progress create errors:', createErrors);
 
-        userProgress = createdProgress as UserProgress;
+        userProgress = !Array.isArray(createdProgress)
+          ? createdProgress
+          : createdProgress[0]; // fallback if create returns array
       }
 
       setProgress({
@@ -111,8 +110,10 @@ export function useQuizData(userId: string) {
           xpValue: 10,
           difficulty: 'easy',
         });
-        if (q1) {
-          await createAnswers(q1.id, [
+
+        const question = !Array.isArray(q1) ? q1 : q1[0];
+        if (question?.id) {
+          await createAnswers(question.id, [
             { content: 'Paris', isCorrect: true },
             { content: 'London', isCorrect: false },
             { content: 'Berlin', isCorrect: false },
@@ -128,8 +129,10 @@ export function useQuizData(userId: string) {
           xpValue: 15,
           difficulty: 'medium',
         });
-        if (q2) {
-          await createAnswers(q2.id, [
+
+        const question = !Array.isArray(q2) ? q2 : q2[0];
+        if (question?.id) {
+          await createAnswers(question.id, [
             { content: '4', isCorrect: true },
             { content: '2', isCorrect: false },
             { content: '8', isCorrect: false },
@@ -145,8 +148,10 @@ export function useQuizData(userId: string) {
           xpValue: 20,
           difficulty: 'hard',
         });
-        if (q3) {
-          await createAnswers(q3.id, [
+
+        const question = !Array.isArray(q3) ? q3 : q3[0];
+        if (question?.id) {
+          await createAnswers(question.id, [
             { content: '299792458 m/s', isCorrect: true },
             { content: '150000000 m/s', isCorrect: false },
             { content: '300000000 m/s', isCorrect: false },
@@ -191,9 +196,13 @@ export function useQuizData(userId: string) {
         totalXP: updatedXP,
       });
 
+      const updatedProgress = !Array.isArray(updatedProgressRaw)
+        ? updatedProgressRaw
+        : updatedProgressRaw[0];
+
       setProgress({
         ...progress,
-        ...updatedProgressRaw,
+        ...updatedProgress,
         totalXP: updatedXP,
         answeredQuestions: updatedAnswered,
       });
@@ -206,3 +215,4 @@ export function useQuizData(userId: string) {
     handleAnswer,
   };
 }
+

@@ -1,6 +1,7 @@
-import { useState, useEffect, RefObject } from 'react';
+import { useState, useEffect } from 'react';
+import type { RefObject } from 'react';
 
-export function useHeaderHeight(ref: RefObject<HTMLElement>, defaultHeight = 60) {
+export function useHeaderHeight(ref: RefObject<HTMLElement | null>, defaultHeight = 60) {
   const [headerHeight, setHeaderHeight] = useState(defaultHeight);
 
   useEffect(() => {
@@ -34,4 +35,6 @@ export function useHeaderHeight(ref: RefObject<HTMLElement>, defaultHeight = 60)
 
   return headerHeight;
 }
+
+
 
