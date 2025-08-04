@@ -1,9 +1,7 @@
-import { useState, useLayoutEffect, useRef } from 'react';
-import type { Schema } from '../../amplify/data/resource'; // Adjust path as needed
+// src/components/QuestionComponent.tsx
 
-type QuestionWithAnswers = Omit<Schema['Question']['type'], 'answers'> & {
-  answers: Schema['Answer']['type'][];
-};
+import { useState, useLayoutEffect, useRef } from 'react';
+import type { QuestionWithAnswers } from '../types/QuestionTypes';
 
 interface Props {
   question: QuestionWithAnswers;
@@ -22,8 +20,8 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const correctAnswer = question.answers.find((ans) => ans.isCorrect)?.content?.trim() || '';
-  const parts = correctAnswer.split(/\s+/);
-  const lengths = parts.map((part) => part.length);
+  const parts: string[] = correctAnswer.split(/\s+/);
+  const lengths = parts.map((p: string) => p.length);
   const placeholderChar = '-';
 
   const buildDisplay = (typed: string) => {
@@ -56,9 +54,9 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     let remaining = letters;
     for (let i = 0; i < lengths.length; i++) {
       const l = lengths[i];
-      const to_place = Math.min(l, remaining);
-      pos += to_place;
-      remaining -= to_place;
+      const toPlace = Math.min(l, remaining);
+      pos += toPlace;
+      remaining -= toPlace;
       if (remaining > 0 && i < lengths.length - 1) pos += 1;
     }
     return pos;
@@ -66,9 +64,8 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
 
   useLayoutEffect(() => {
     if (inputRef.current) {
-      const cursorPos = getCursorPosition(userAnswer.length);
-      inputRef.current.selectionStart = cursorPos;
-      inputRef.current.selectionEnd = cursorPos;
+      inputRef.current.selectionStart = getCursorPosition(userAnswer.length);
+      inputRef.current.selectionEnd = inputRef.current.selectionStart;
     }
   }, [userAnswer]);
 
@@ -78,7 +75,7 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     }
   }, [isIncorrect]);
 
-  const handleSubmit = () => {
+  function handleSubmit() {
     const fullUserAnswer = buildFull(userAnswer);
     if (!fullUserAnswer) return;
 
@@ -91,24 +88,24 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     } else {
       setIsIncorrect(true);
     }
-  };
+  }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const cleanedValue = e.target.value.replace(/[- ]/g, '');
     setUserAnswer(cleanedValue);
     if (isIncorrect) setIsIncorrect(false);
-  };
+  }
 
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+  function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
     if (userAnswer === '') {
       e.target.setSelectionRange(0, 0);
     }
-  };
+  }
 
   const displayValue = isAnswered ? correctAnswer : buildDisplay(userAnswer);
 
   return (
-    <div className="question-item">
+    <div style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
       <p>{question.text}</p>
       <input
         ref={inputRef}
@@ -125,8 +122,6 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
           border: '1px solid #ccc',
           fontFamily: 'monospace',
           marginRight: '1rem',
-          width: '100%',
-          maxWidth: '500px',
         }}
       />
       <button
@@ -139,5 +134,9 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     </div>
   );
 }
+
+
+
+
 
 

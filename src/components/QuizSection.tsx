@@ -1,19 +1,12 @@
-// src/components/QuizSection.tsx
 import { QuestionComponent } from './QuestionComponent';
 import { AccordionSection } from './AccordionSection';
 import type { QuestionWithAnswers } from '../types/QuestionTypes';
-
-interface UserProgress {
-  id: string;
-  userId: string;
-  totalXP?: number | null;
-  answeredQuestions?: (string | null)[] | null;
-}
+import type { Schema } from '../amplify/data/resource';
 
 interface QuizSectionProps {
   title: string;
   questions: QuestionWithAnswers[];
-  progress: UserProgress;
+  progress: Schema['UserProgress']['type'];
   handleAnswer: (
     questionId: string,
     userAnswer: string,
@@ -37,21 +30,23 @@ export function QuizSection({
   return (
     <AccordionSection
       title={title}
-      educationalText={educationalText}
       isLocked={isLocked}
       initialOpen={initialOpen}
+      educationalText={educationalText}
     >
-      {questions.map((q) => (
+      {questions.map((question) => (
         <QuestionComponent
-          key={q.id}
-          question={q}
+          key={question.id}
+          question={question}
           onSubmit={handleAnswer}
-          isAnswered={progress?.answeredQuestions?.includes(q.id) ?? false}
+          isAnswered={progress.answeredQuestions?.includes(question.id) || false}
         />
       ))}
     </AccordionSection>
   );
 }
+
+
 
 
 
