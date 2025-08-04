@@ -1,17 +1,21 @@
 {
   "compilerOptions": {
-    "target": "es2022",
-    "module": "es2022",
-    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",         // ✅ For modern ESM resolution
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
+    "baseUrl": ".",                        // ✅ Enables relative `paths`
     "paths": {
-      "$amplify/*": [
-        "../.amplify/generated/*"
-      ]
+      "@amplify/*": ["amplify/*"],         // ✅ Your Amplify files like `amplify/data/resource`
+      "$amplify/*": ["../.amplify/generated/*"] // ✅ Optional: if you use codegen outputs
     }
-  }
+  },
+  "include": [
+    "src",
+    "amplify"                              // ✅ Ensures Amplify backend types are included
+  ]
 }

@@ -1,10 +1,10 @@
-import type { Schema } from '../amplify/data/resource';
+import type { Schema } from '@amplify/data/resource';
 
-export type QuestionWithAnswers = Omit<Schema['Question']['type'], 'answers'> & {
-  // Override/extend the difficulty to allow null (to match Amplify-generated types)
-  difficulty?: 'easy' | 'medium' | 'hard' | null;
+export type QuestionWithAnswers = Omit<Schema['Question']['type'], 'answers' | 'difficulty'> & {
+  difficulty: 'easy' | 'medium' | 'hard'; // Required and narrowed to match runtime expectation
   answers: Schema['Answer']['type'][];
 };
+
 
 
 
