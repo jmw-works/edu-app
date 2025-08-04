@@ -1,4 +1,3 @@
-// src/App.tsx
 import {
   Authenticator,
   ThemeProvider,
@@ -10,7 +9,7 @@ import './App.css';
 
 function App() {
   return (
-    <ThemeProvider theme={defaultTheme}>
+    <ThemeProvider theme={defaultTheme as any}>
       <Authenticator
         components={{
           Header() {
@@ -31,7 +30,7 @@ function App() {
           },
         }}
       >
-        {({ signOut, user }) => (
+        {({ signOut, user }: any) => (
           <AuthenticatedContent user={user} signOut={signOut} />
         )}
       </Authenticator>
@@ -40,5 +39,9 @@ function App() {
 }
 
 export default App;
+
+
+
+
 
 
