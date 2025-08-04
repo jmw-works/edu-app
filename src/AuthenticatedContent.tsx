@@ -8,7 +8,7 @@ import { calculateXPProgress } from './utils/xp';
 import { LevelUpBanner } from './components/LevelUpBanner';
 import { UserStatsPanel } from './components/UserStatsPanel';
 import { Flex, Heading } from '@aws-amplify/ui-react';
-import { type QuestionWithAnswers } from './types/QuestionTypes';
+
 
 
 interface AuthenticatedContentProps {
@@ -23,11 +23,7 @@ interface AuthenticatedContentProps {
   signOut?: (data?: any) => void;
 }
 
-type Section = {
-  number: number;
-  title: string;
-  educationalText: string;
-};
+
 
 export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProps) {
   const { questions, progress, handleAnswer } = useQuizData(user.userId);
