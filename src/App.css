@@ -131,7 +131,7 @@
 
 /* Main header styles */
 .main-header {
-  background-color: #001f3f; /* Dark navy */
+  background-color: #1e2a3a; /* Dark navy */
   padding: 2rem; /* Increased padding for thicker bar */
   display: flex;
   align-items: center;
@@ -223,7 +223,7 @@
 }
 
 .login-button:hover {
-  background-color: #003366;
+  background-color: #1e2a3a;
 }
 
 /* Add padding to main content to avoid overlap with fixed header and provide headroom */
@@ -248,7 +248,7 @@ main {
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  border-bottom: 1px solid #2f3e53;
+  border-bottom: 1px solid #1e2a3a;
 }
 
 .section-title {

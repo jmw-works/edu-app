@@ -1,11 +1,13 @@
 // src/Header.tsx
+import { forwardRef } from 'react';
+
 interface HeaderProps {
   signOut?: () => void;
 }
 
-export function Header({ signOut }: HeaderProps) {
+export const Header = forwardRef<HTMLDivElement, HeaderProps>(({ signOut }, ref) => {
   return (
-    <header className="main-header">
+    <header ref={ref} className="main-header" style={{ position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 1000 /* Ensure it's on top */ }}>
       <div className="logo-container">
         <img src="/logo.png" alt="Logo" className="logo" />
         <span className="logo-text">Treasure Gym</span>
@@ -23,4 +25,4 @@ export function Header({ signOut }: HeaderProps) {
       </div>
     </header>
   );
-}
+});
