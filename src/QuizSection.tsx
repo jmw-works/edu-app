@@ -25,7 +25,7 @@ interface QuizSectionProps {
 
 export function QuizSection({
   title,
-  sectionNumber,
+  sectionNumber: _sectionNumber, // rename with _ to silence unused warning
   questions,
   progress,
   handleAnswer,
