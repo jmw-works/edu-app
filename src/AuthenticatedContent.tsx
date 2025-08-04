@@ -8,8 +8,8 @@ import { calculateXPProgress } from './utils/xp';
 import { LevelUpBanner } from './components/LevelUpBanner';
 import { UserStatsPanel } from './components/UserStatsPanel';
 import { Flex, Heading } from '@aws-amplify/ui-react';
-import type { RefObject } from 'react';
-import type { QuestionWithAnswers } from './types/QuestionTypes';
+import { type QuestionWithAnswers } from './types/QuestionTypes';
+
 
 interface AuthenticatedContentProps {
   user: {
@@ -33,7 +33,7 @@ export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProp
   const { questions, progress, handleAnswer } = useQuizData(user.userId);
 
   const headerRef = useRef<HTMLDivElement>(null);
-  const headerHeight = useHeaderHeight(headerRef as RefObject<HTMLElement | null>);
+  const headerHeight = useHeaderHeight(headerRef);
   const spacing = 50;
 
   const userName =
@@ -46,13 +46,11 @@ export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProp
   const currentXP = progress.totalXP || 0;
   const percentage = calculateXPProgress(currentXP, maxXP);
 
-  const sectionCompletions = sections.map((sec: Section) => {
-    const secQuestions = questions.filter((q: QuestionWithAnswers) => q.section === sec.number);
+  const sectionCompletions = sections.map((sec) => {
+    const secQuestions = questions.filter(q => q.section === sec.number);
     return (
       secQuestions.length === 0 ||
-      secQuestions.every((q: QuestionWithAnswers) =>
-        progress.answeredQuestions?.includes(q.id)
-      )
+      secQuestions.every(q => progress.answeredQuestions?.includes(q.id))
     );
   });
 
@@ -78,10 +76,8 @@ export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProp
             Hey {userName}! Let's jump in.
           </Heading>
 
-          {sections.map((sec: Section, index: number) => {
-            const secQuestions = questions.filter(
-              (q: QuestionWithAnswers) => q.section === sec.number
-            );
+          {sections.map((sec, index) => {
+            const secQuestions = questions.filter(q => q.section === sec.number);
             const isLocked = index > 0 && !sectionCompletions[index - 1];
             const initialOpen = index === 0;
 
@@ -113,6 +109,7 @@ export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProp
     </>
   );
 }
+
 
 
 

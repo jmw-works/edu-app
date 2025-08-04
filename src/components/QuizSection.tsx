@@ -1,12 +1,12 @@
 import { QuestionComponent } from './QuestionComponent';
 import { AccordionSection } from './AccordionSection';
 import type { QuestionWithAnswers } from '../types/QuestionTypes';
-import type { Schema } from '../amplify/data/resource';
+import type { UserProgress } from '../types/UserProgressTypes';
 
 interface QuizSectionProps {
   title: string;
   questions: QuestionWithAnswers[];
-  progress: Schema['UserProgress']['type'];
+  progress: UserProgress;
   handleAnswer: (
     questionId: string,
     userAnswer: string,
