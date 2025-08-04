@@ -1,4 +1,5 @@
 // src/App.tsx
+
 import { Authenticator } from '@aws-amplify/ui-react';
 import { AuthenticatedContent } from './pages/AuthenticatedContent';
 import '@aws-amplify/ui-react/styles.css';
