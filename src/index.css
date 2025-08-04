@@ -1,0 +1,22 @@
+/* src/index.css */
+/* Global styles for the app. Applied via import in main.tsx. */
+/* Keeps UI simple for MVP; you can add more for gamification visuals like progress bars. */
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+}
+
+h1, h2 {
+  color: #333;
+}
+
+button {
+  margin-left: 10px;
+  padding: 5px 10px;
+}
+
+input {
+  padding: 5px;
+  margin-right: 10px;
+}
