@@ -1,6 +1,6 @@
-// src/AuthenticatedContent.tsx
+// src/pages/AuthenticatedContent.tsx
 
-import { useRef, useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Header } from './components/Header';
 import { QuizSection } from './components/QuizSection';
 import { useQuizData } from './hooks/useQuizData';
@@ -14,7 +14,7 @@ import { Flex, Heading } from '@aws-amplify/ui-react';
 interface AuthenticatedContentProps {
   user: {
     userId: string;
-    attributes: {
+    attributes?: {
       name?: string;
       email?: string;
       [key: string]: unknown;
@@ -31,11 +31,11 @@ export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProp
   const spacing = 50;
 
   const userName = useMemo(() => {
-    return (
-      user.attributes?.name ||
-      user.attributes?.email?.split('@')[0] ||
-      'User'
-    );
+    const name = user.attributes?.name;
+    const email = user.attributes?.email;
+    if (typeof name === 'string' && name.trim()) return name;
+    if (typeof email === 'string') return email.split('@')[0];
+    return 'User';
   }, [user]);
 
   const [showBanner, setShowBanner] = useState(true);
@@ -109,6 +109,7 @@ export function AuthenticatedContent({ user, signOut }: AuthenticatedContentProp
     </>
   );
 }
+
 
 
 
