@@ -1,5 +1,5 @@
 import { useState, useLayoutEffect, useRef } from 'react';
-import type { Schema } from '../amplify/data/resource';
+import type { Schema } from '../../amplify/data/resource'; // Adjust path as needed
 
 type QuestionWithAnswers = Omit<Schema['Question']['type'], 'answers'> & {
   answers: Schema['Answer']['type'][];
@@ -23,7 +23,7 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
 
   const correctAnswer = question.answers.find((ans) => ans.isCorrect)?.content?.trim() || '';
   const parts = correctAnswer.split(/\s+/);
-  const lengths = parts.map(p => p.length);
+  const lengths = parts.map((part) => part.length);
   const placeholderChar = '-';
 
   const buildDisplay = (typed: string) => {
@@ -66,8 +66,9 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
 
   useLayoutEffect(() => {
     if (inputRef.current) {
-      inputRef.current.selectionStart = getCursorPosition(userAnswer.length);
-      inputRef.current.selectionEnd = inputRef.current.selectionStart;
+      const cursorPos = getCursorPosition(userAnswer.length);
+      inputRef.current.selectionStart = cursorPos;
+      inputRef.current.selectionEnd = cursorPos;
     }
   }, [userAnswer]);
 
@@ -77,7 +78,7 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     }
   }, [isIncorrect]);
 
-  function handleSubmit() {
+  const handleSubmit = () => {
     const fullUserAnswer = buildFull(userAnswer);
     if (!fullUserAnswer) return;
 
@@ -90,24 +91,24 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     } else {
       setIsIncorrect(true);
     }
-  }
+  };
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const cleanedValue = e.target.value.replace(/[- ]/g, '');
     setUserAnswer(cleanedValue);
     if (isIncorrect) setIsIncorrect(false);
-  }
+  };
 
-  function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     if (userAnswer === '') {
       e.target.setSelectionRange(0, 0);
     }
-  }
+  };
 
   const displayValue = isAnswered ? correctAnswer : buildDisplay(userAnswer);
 
   return (
-    <div style={{ marginBottom: '1.5rem' }}>
+    <div className="question-item">
       <p>{question.text}</p>
       <input
         ref={inputRef}
@@ -123,12 +124,14 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
           backgroundColor: isAnswered ? '#f5f5f5' : '#fff',
           border: '1px solid #ccc',
           fontFamily: 'monospace',
+          marginRight: '1rem',
+          width: '100%',
+          maxWidth: '500px',
         }}
       />
       <button
         onClick={handleSubmit}
         disabled={isAnswered || !userAnswer.trim()}
-        style={{ marginLeft: '1rem' }}
       >
         {isAnswered ? 'Correct!' : 'Submit'}
       </button>
@@ -136,10 +139,5 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     </div>
   );
 }
-
-
-
-
-
 
 
