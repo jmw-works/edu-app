@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
-import "../App.css"; // Correct relative path
-
+import {
+  MdKeyboardArrowDown,
+  MdKeyboardArrowUp,
+  MdLockOutline
+} from "react-icons/md";
+import "../App.css";
 
 interface AccordionSectionProps {
   title: string;
@@ -21,28 +24,30 @@ export function AccordionSection({
   const [isOpen, setIsOpen] = useState(initialOpen);
 
   const toggleOpen = () => {
-    if (!isLocked) setIsOpen(!isOpen);
+    if (!isLocked) {
+      setIsOpen((prev) => !prev);
+    }
   };
 
   return (
-    <div className="accordion">
+    <div className={`accordion ${isLocked ? "accordion-locked" : ""}`}>
       <div
-        className={`accordion-header ${isLocked ? 'locked' : ''}`}
+        className={`accordion-header ${isLocked ? "locked" : ""}`}
         onClick={toggleOpen}
       >
         <span className="section-title">{title}</span>
         <span className="accordion-icon">
           {isLocked ? (
-            <span role="img" aria-label="locked">🔒</span>
+            <MdLockOutline size={24} />
           ) : isOpen ? (
-            <MdKeyboardArrowUp />
+            <MdKeyboardArrowUp size={24} />
           ) : (
-            <MdKeyboardArrowDown />
+            <MdKeyboardArrowDown size={24} />
           )}
         </span>
       </div>
 
-      {isOpen && (
+      {isOpen && !isLocked && (
         <div className="accordion-body">
           <p className="section-description">{educationalText}</p>
           {children}
@@ -51,5 +56,9 @@ export function AccordionSection({
     </div>
   );
 }
+
+
+
+
 
 

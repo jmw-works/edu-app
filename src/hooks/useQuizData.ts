@@ -1,20 +1,22 @@
+// src/hooks/useQuizData.ts
 import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
-import type { Schema } from '../../amplify/data/resource'; // Adjust path as needed
+import type { Schema } from '../../amplify/data/resource';
 import type { QuestionWithAnswers } from '../types/QuestionTypes';
 
 const client = generateClient<Schema>();
 
 type UserProgress = Schema['UserProgress']['type'];
 
+const now = new Date().toISOString();
+
 const defaultProgress: UserProgress = {
   id: '',
   userId: '',
   totalXP: 0,
   answeredQuestions: [],
-  owner: null,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
+  createdAt: now,
+  updatedAt: now,
 };
 
 export function useQuizData(userId: string) {
@@ -22,7 +24,9 @@ export function useQuizData(userId: string) {
   const [progress, setProgress] = useState<UserProgress>(defaultProgress);
 
   useEffect(() => {
-    fetchData();
+    if (userId) {
+      fetchData();
+    }
   }, [userId]);
 
   async function fetchData() {
@@ -39,8 +43,8 @@ export function useQuizData(userId: string) {
           'answers.*',
         ],
       });
-      if (errors) console.error('Question fetch errors:', errors);
 
+      if (errors) console.error('Question fetch errors:', errors);
       const questionsList = questionData as QuestionWithAnswers[];
 
       const hasSection1 = questionsList.some((q) => q.section === 1);
@@ -70,6 +74,7 @@ export function useQuizData(userId: string) {
       const { data: progressData, errors: progressErrors } = await client.models.UserProgress.list({
         filter: { userId: { eq: userId } },
       });
+
       if (progressErrors) console.error('Progress fetch errors:', progressErrors);
 
       let userProgress = progressData[0] as UserProgress | undefined;
@@ -80,17 +85,15 @@ export function useQuizData(userId: string) {
           totalXP: 0,
           answeredQuestions: [],
         });
+
         if (createErrors) console.error('Progress create errors:', createErrors);
 
         userProgress = !Array.isArray(createdProgress)
           ? createdProgress
-          : createdProgress[0]; // fallback if create returns array
+          : createdProgress[0];
       }
 
-      setProgress({
-        ...defaultProgress,
-        ...userProgress,
-      });
+      setProgress({ ...defaultProgress, ...userProgress });
     } catch (error) {
       console.error('Fetch data error:', error);
       setProgress(defaultProgress);
@@ -215,4 +218,5 @@ export function useQuizData(userId: string) {
     handleAnswer,
   };
 }
+
 

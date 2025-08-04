@@ -1,5 +1,3 @@
-import type { Schema } from '../amplify/data/resource';
-
 export type UserProgress = {
   id: string;
   userId: string;
@@ -9,5 +7,6 @@ export type UserProgress = {
   createdAt: string;
   updatedAt: string;
 };
+
 
 
