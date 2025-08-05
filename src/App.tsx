@@ -1,52 +1,62 @@
+// src/App.tsx
+import { fetchUserAttributes, type UserAttributeKey } from 'aws-amplify/auth';
+import { useEffect, useState } from 'react';
 import { Authenticator } from '@aws-amplify/ui-react';
-import AuthenticatedContent from './pages/AuthenticatedContent';
 import '@aws-amplify/ui-react/styles.css';
-import './App.css';
+import AuthenticatedContent from './pages/AuthenticatedContent';
 
-type AmplifyUser = {
-  userId?: string;
-  username?: string;
-  attributes?: {
-    name?: string;
-    email?: string;
-    [key: string]: unknown;
-  };
-};
+type Attrs = Partial<Record<UserAttributeKey, string>>; // <-- match v6 API
 
-function App() {
+export default function App() {
+  const [attrs, setAttrs] = useState<Attrs | null>(null);
+  const [attrsError, setAttrsError] = useState<Error | null>(null);
+
   return (
-    <div className="app-root">
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '2rem 0' }}>
-        <img
-          src="/logo.png"
-          alt="Logo"
-          style={{ width: 120, marginBottom: 16, borderRadius: 12, boxShadow: '0 2px 10px #0002' }}
-        />
-      </div>
-      <Authenticator>
-        {({ signOut, user }) => {
-          if (!user) return <></>;
-          const u: AmplifyUser = user as AmplifyUser;
-          return (
-            <AuthenticatedContent
-              user={{
-                userId: u.userId ?? u.username ?? '',
-                username: u.username,
-                attributes: {
-                  name: u.attributes?.name,
-                  email: u.attributes?.email,
-                },
-              }}
-              signOut={signOut}
-            />
-          );
-        }}
-      </Authenticator>
-    </div>
+    <Authenticator>
+      {({ user, signOut }) => {
+        useEffect(() => {
+          let cancelled = false;
+          (async () => {
+            setAttrs(null);
+            setAttrsError(null);
+            try {
+              const a = await fetchUserAttributes();
+              if (!cancelled) setAttrs(a);              // ✅ types now align
+            } catch (e) {
+              if (!cancelled) setAttrsError(e as Error);
+            }
+          })();
+          return () => { cancelled = true; };
+        }, [user?.userId]);
+
+        const derivedEmail =
+          attrs?.email ??
+          (user?.signInDetails?.loginId as string | undefined);
+
+        const derivedName =
+          attrs?.name ?? attrs?.given_name ?? undefined;
+
+        return (
+          <AuthenticatedContent
+            user={{
+              userId: user?.userId as string,
+              username: user?.username,
+              attributes: {
+                email: derivedEmail,
+                name: derivedName,
+              } as any,
+            }}
+            signOut={signOut}
+            attrsError={attrsError}  // see next section
+          />
+        );
+      }}
+    </Authenticator>
   );
 }
 
-export default App;
+
+
 
 
 

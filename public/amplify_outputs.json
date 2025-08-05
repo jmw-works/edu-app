@@ -1,9 +1,9 @@
 {
   "auth": {
-    "user_pool_id": "us-west-1_b0htK92Hk",
+    "user_pool_id": "us-west-1_kApFDRKje",
     "aws_region": "us-west-1",
-    "user_pool_client_id": "1e90qga05e7lldhrsk0kfosfos",
-    "identity_pool_id": "us-west-1:04eec1d7-ae3b-4c0a-9747-c7813119b5b4",
+    "user_pool_client_id": "62ognhhbateucqvdvmqh4dg694",
+    "identity_pool_id": "us-west-1:c428b333-16f6-4012-b706-51a9ba5689b9",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -26,12 +26,10 @@
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://f5zqi4c2i5bcllmxc4ovcczvzq.appsync-api.us-west-1.amazonaws.com/graphql",
+    "url": "https://yub3jfeodvhijhx6derjgbiqdm.appsync-api.us-west-1.amazonaws.com/graphql",
     "aws_region": "us-west-1",
-    "api_key": "da2-ha4fqcxfy5fixgbfox7ljgs3du",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
-      "API_KEY",
       "AWS_IAM"
     ],
     "model_introspection": {
@@ -129,13 +127,6 @@
               "type": "auth",
               "properties": {
                 "rules": [
-                  {
-                    "allow": "public",
-                    "provider": "apiKey",
-                    "operations": [
-                      "read"
-                    ]
-                  },
                   {
                     "allow": "private",
                     "operations": [
@@ -237,13 +228,6 @@
               "type": "auth",
               "properties": {
                 "rules": [
-                  {
-                    "allow": "public",
-                    "provider": "apiKey",
-                    "operations": [
-                      "read"
-                    ]
-                  },
                   {
                     "allow": "private",
                     "operations": [
