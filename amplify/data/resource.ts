@@ -44,11 +44,11 @@ const schema = a.schema({
     .model({
       id: a.id().required(),
       userId: a.string().required(),
-      displayName: a.string(), // can be undefined until set
+      displayName: a.string(),
       email: a.string(),
     })
     .authorization(allow => [
-      allow.owner(), // only the logged-in user can access their own profile
+      allow.owner(),
     ]),
 });
 
@@ -56,13 +56,8 @@ export type Schema = ClientSchema<typeof schema>;
 
 export const data = defineData({
   schema,
-  authorizationModes: {
-    defaultAuthorizationMode: 'userPool',
-    apiKeyAuthorizationMode: {
-      expiresInDays: 30,
-    },
-  },
 });
+
 
 
 
