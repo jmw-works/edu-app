@@ -1,5 +1,6 @@
+// src/components/SetDisplayNameModal.tsx
 import { useState } from 'react';
-import { Modal, Button, Input, Text } from '@aws-amplify/ui-react';
+import { Button, Input, Text } from '@aws-amplify/ui-react';
 
 interface SetDisplayNameModalProps {
   onSubmit: (displayName: string) => void;
@@ -17,19 +18,39 @@ export function SetDisplayNameModal({ onSubmit, loading = false }: SetDisplayNam
   };
 
   return (
-    <Modal
-      isOpen
-      ariaLabel="Set your display name"
-      style={{ zIndex: 1300 }}
+    <div
+      style={{
+        position: 'fixed',
+        zIndex: 1300,
+        left: 0,
+        top: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(0,0,0,0.35)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+      aria-modal="true"
+      role="dialog"
     >
-      <form onSubmit={handleSubmit} style={{ padding: '2rem', background: '#fff', borderRadius: '10px', minWidth: 320 }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          padding: '2rem',
+          background: '#fff',
+          borderRadius: '10px',
+          minWidth: 320,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
+        }}
+      >
         <Text as="h2" fontWeight="bold" fontSize="large" marginBottom="medium">
           Choose Your Display Name
         </Text>
         <Input
           placeholder="e.g. JaneDoe"
           value={value}
-          onChange={e => setValue(e.target.value)}
+          onChange={e => setValue((e.target as HTMLInputElement).value)}
           maxLength={24}
           autoFocus
           required
@@ -44,7 +65,8 @@ export function SetDisplayNameModal({ onSubmit, loading = false }: SetDisplayNam
           Save
         </Button>
       </form>
-    </Modal>
+    </div>
   );
 }
+
 

@@ -33,12 +33,22 @@ const schema = a.schema({
     .model({
       id: a.id().required(),
       userId: a.string().required(),
-      displayName: a.string(),         // <-- No `.required()`
       totalXP: a.integer().default(0),
       answeredQuestions: a.id().array(),
     })
     .authorization(allow => [
       allow.owner(),
+    ]),
+
+  UserProfile: a
+    .model({
+      id: a.id().required(),
+      userId: a.string().required(),
+      displayName: a.string(), // can be undefined until set
+      email: a.string(),
+    })
+    .authorization(allow => [
+      allow.owner(), // only the logged-in user can access their own profile
     ]),
 });
 
@@ -53,6 +63,9 @@ export const data = defineData({
     },
   },
 });
+
+
+
 
 
 
