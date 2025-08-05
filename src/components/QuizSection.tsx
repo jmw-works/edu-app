@@ -16,6 +16,7 @@ interface QuizSectionProps {
   isLocked: boolean;
   initialOpen: boolean;
   educationalText: string;
+  sectionNumber: number; // ✅ Added this to fix the TS error
 }
 
 export function QuizSection({
@@ -45,6 +46,7 @@ export function QuizSection({
     </AccordionSection>
   );
 }
+
 
 
 

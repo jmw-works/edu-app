@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
+// src/pages/AuthenticatedContent.tsx
+import { useMemo, useRef, useState } from 'react';
 import { Header } from '../components/Header';
 import { QuizSection } from '../components/QuizSection';
 import { useQuizData } from '../hooks/useQuizData';
@@ -8,7 +9,8 @@ import { calculateXPProgress } from '../utils/xp';
 import LevelUpBanner from '../components/LevelUpBanner';
 import UserStatsPanel from '../components/UserStatsPanel';
 import SetNameForm from '../components/SetNameForm';
-import { Flex, Heading } from '@aws-amplify/ui-react';
+import { Flex, Heading, View } from '@aws-amplify/ui-react';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 interface AuthenticatedContentProps {
   user: {
@@ -25,40 +27,46 @@ interface AuthenticatedContentProps {
 
 export default function AuthenticatedContent({ user, signOut }: AuthenticatedContentProps) {
   const { questions, progress, handleAnswer } = useQuizData(user.userId);
+
   const headerRef = useRef<HTMLDivElement>(null);
   const headerHeight = useHeaderHeight(headerRef);
   const spacing = 50;
+
   const [showBanner, setShowBanner] = useState(true);
 
-  // Display name logic
-  const localStorageKey = `displayName_${user.userId}`;
-  const attrName = typeof user?.attributes?.name === 'string' ? user.attributes.name : '';
-  const storedName = localStorage.getItem(localStorageKey) || '';
-  const initialDisplayName = attrName || storedName;
+  const {
+    profile,
+    loading: profileLoading,
+    updateDisplayName,
+  } = useUserProfile(
+    user.userId,
+    user.attributes?.email as string | undefined,
+  );
 
-  const [displayName, setDisplayName] = useState<string>(initialDisplayName);
-
-  // Show modal until displayName exists
-  const showSetName = !displayName;
-
-  useEffect(() => {
-    if (displayName) {
-      localStorage.setItem(localStorageKey, displayName);
-    }
-    // Do NOT call setDisplayName here or you'll get an infinite loop!
-  }, [displayName, localStorageKey]);
-
-  // Modal blocks app until a name is set
-  if (showSetName) {
+  if (profileLoading) {
     return (
       <>
         <Header ref={headerRef} signOut={signOut} />
-        <SetNameForm onSubmit={setDisplayName} />
+        <View padding={spacing}>Loading profile…</View>
       </>
     );
   }
 
-  // Normal app display after name is set
+  const displayName = profile?.displayName ?? '';
+  const showSetName = !displayName;
+
+  if (showSetName) {
+    return (
+      <>
+        <Header ref={headerRef} signOut={signOut} />
+        <Flex direction="column" alignItems="center" padding={spacing}>
+          <Heading level={3}>Welcome!</Heading>
+          <SetNameForm onSubmit={(name) => updateDisplayName(name)} />
+        </Flex>
+      </>
+    );
+  }
+
   const maxXP = 100;
   const currentXP = progress.totalXP ?? 0;
   const percentage = calculateXPProgress(currentXP, maxXP);
@@ -77,29 +85,24 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
     <>
       <Header ref={headerRef} signOut={signOut} />
 
-      {/* Level up banner */}
       {showBanner && (
-        <div style={{ marginTop: `${headerHeight + spacing}px` }}>
-          <LevelUpBanner onClose={() => setShowBanner(false)} />
-        </div>
+        <LevelUpBanner
+          currentXP={currentXP}
+          maxXP={maxXP}
+          onDismiss={() => setShowBanner(false)}
+        />
       )}
 
       <Flex
-        direction="row"
-        gap="large"
-        paddingTop={`${headerHeight + spacing}px`}
-        padding="xl"
-        maxWidth="1400px"
-        margin="0 auto"
+        direction={{ base: 'column', large: 'row' }}
+        alignItems={{ large: 'flex-start' }}
       >
-        {/* Main Quiz Content */}
-        <Flex direction="column" flex="1">
-          <Heading level={2} marginBottom="medium">
-            Hey {displayName || 'User'}! Let's jump in.
-          </Heading>
-
+        <Flex direction="column" flex="1" padding={spacing}>
+          <Heading level={2}>Hey {displayName}! Let&apos;s jump in.</Heading>
           {sections.map((sec, index) => {
-            const secQuestions = questions.filter((q) => q.section === sec.number);
+            const secQuestions = questions.filter(
+              (q) => q.section === sec.number,
+            );
             const prevComplete =
               index === 0 ||
               sections
@@ -107,7 +110,9 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
                 .every((s) =>
                   questions
                     .filter((q) => q.section === s.number)
-                    .every((q) => progress.answeredQuestions?.includes(q.id))
+                    .every((q) =>
+                      progress.answeredQuestions?.includes(q.id),
+                    ),
                 );
             const isLocked = !prevComplete;
             const initialOpen = index === 0;
@@ -116,21 +121,26 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
               <QuizSection
                 key={sec.number}
                 title={sec.title}
+                educationalText={sec.educationalText}
+                sectionNumber={sec.number}
                 questions={secQuestions}
                 progress={progress}
                 handleAnswer={handleAnswer}
                 isLocked={isLocked}
                 initialOpen={initialOpen}
-                educationalText={sec.educationalText}
               />
             );
           })}
         </Flex>
 
-        {/* Sidebar: User Stats */}
         <UserStatsPanel
-          user={user}
-          userName={displayName}
+          user={{
+            username: user.username,
+            attributes: {
+              ...user.attributes,
+              name: displayName,
+            },
+          }}
           currentXP={currentXP}
           maxXP={maxXP}
           percentage={percentage}
@@ -141,6 +151,10 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
     </>
   );
 }
+
+
+
+
 
 
 
