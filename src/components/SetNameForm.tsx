@@ -1,54 +1,58 @@
 import { useState } from 'react';
-import { Button, TextField, Flex, Text } from '@aws-amplify/ui-react';
 
 interface SetNameFormProps {
-  onSetName: (name: string) => Promise<void> | void;
+  onSubmit: (name: string) => void;
 }
 
-export function SetNameForm({ onSetName }: SetNameFormProps) {
+export default function SetNameForm({ onSubmit }: SetNameFormProps) {
   const [name, setName] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
     if (!name.trim()) {
-      setError('Please enter a display name.');
+      setError('Enter a display name.');
       return;
     }
-    setSubmitting(true);
-    try {
-      await onSetName(name.trim());
-      // Optionally: show a success message, clear field, etc.
-    } catch (err) {
-      setError('Failed to save name. Please try again.');
-    }
-    setSubmitting(false);
-  };
+    setError('');
+    onSubmit(name.trim());
+  }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <Flex direction="column" gap="small" width="300px">
-        <TextField
-          label="Display Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          isRequired
-        />
-        {error && <Text color="red">{error}</Text>}
-        <Button
-          type="submit"
-          variation="primary"
-          isLoading={submitting}
-          disabled={submitting}
-          width="100%"
-        >
-          Save Name
-        </Button>
-      </Flex>
-    </form>
+    <div className="modal-bg">
+      <form onSubmit={handleSubmit} className="modal">
+        <label>
+          Set your display name:
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            autoFocus
+            style={{ display: 'block', margin: '1em 0', width: '100%' }}
+          />
+        </label>
+        {error && <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>}
+        <button type="submit">Save</button>
+      </form>
+      <style>{`
+        .modal-bg {
+          position: fixed; inset: 0; background: #0005; display: flex; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .modal {
+          background: #fff; padding: 2em; border-radius: 1em; box-shadow: 0 2px 32px #0002; min-width: 280px;
+        }
+      `}</style>
+    </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
 
 

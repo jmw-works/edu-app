@@ -14,15 +14,17 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "jsx": "react-jsx",
-    "baseUrl": ".", // 👈 Important for paths
+    "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@amplify/*": ["amplify/*"] // 👈 Helpful if you use aliases like `@amplify/data/resource`
+      "@amplify/*": ["amplify/*"],
+      "@amplify-schema": ["amplify/data/resource"]
     }
   },
   "include": [
     "src",
-    "amplify" // 👈 REQUIRED to include your schema types
+    "amplify"
   ]
 }
+
 

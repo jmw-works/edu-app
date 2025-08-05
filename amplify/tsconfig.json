@@ -11,11 +11,13 @@
     "baseUrl": ".",
     "paths": {
       "@amplify/*": ["amplify/*"],
-      "$amplify/*": ["../.amplify/generated/*"]
+      "$amplify/*": ["../.amplify/generated/*"],
+      "@amplify-schema": ["amplify/data/resource"]
     }
   },
   "include": [
     "."
   ]
 }
+
 

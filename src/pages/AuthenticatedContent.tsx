@@ -1,6 +1,4 @@
-// src/pages/AuthenticatedContent.tsx
-
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { Header } from '../components/Header';
 import { QuizSection } from '../components/QuizSection';
 import { useQuizData } from '../hooks/useQuizData';
@@ -11,9 +9,6 @@ import LevelUpBanner from '../components/LevelUpBanner';
 import UserStatsPanel from '../components/UserStatsPanel';
 import SetNameForm from '../components/SetNameForm';
 import { Flex, Heading } from '@aws-amplify/ui-react';
-
-// If using a user profile hook:
-// import { useUserProfile } from '../hooks/useUserProfile';
 
 interface AuthenticatedContentProps {
   user: {
@@ -35,31 +30,39 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
   const spacing = 50;
   const [showBanner, setShowBanner] = useState(true);
 
-  // --- If using a user profile hook for displayName ---
-  // const { profile, loading, updateDisplayName } = useUserProfile(user.userId, user.attributes.email);
-  // const displayName = profile?.displayName;
+  // Display name logic
+  const localStorageKey = `displayName_${user.userId}`;
+  const attrName = typeof user?.attributes?.name === 'string' ? user.attributes.name : '';
+  const storedName = localStorage.getItem(localStorageKey) || '';
+  const initialDisplayName = attrName || storedName;
 
-  // For this version, we'll just use the name from attributes or fallback:
-  const displayName =
-    user?.attributes?.name ||
-    user?.username ||
-    (user?.attributes?.email ? user.attributes.email.split('@')[0] : undefined);
+  const [displayName, setDisplayName] = useState<string>(initialDisplayName);
 
-  const [showSetName, setShowSetName] = useState(!displayName);
+  // Show modal until displayName exists
+  const showSetName = !displayName;
 
-  // Call this when SetNameForm submits:
-  const handleNameSubmit = (name: string) => {
-    // Save the name via your API/hook if needed!
-    // await updateDisplayName(name);
-    user.attributes.name = name; // For demo purposes; use your real API!
-    setShowSetName(false);
-  };
+  useEffect(() => {
+    if (displayName) {
+      localStorage.setItem(localStorageKey, displayName);
+    }
+    // Do NOT call setDisplayName here or you'll get an infinite loop!
+  }, [displayName, localStorageKey]);
 
+  // Modal blocks app until a name is set
+  if (showSetName) {
+    return (
+      <>
+        <Header ref={headerRef} signOut={signOut} />
+        <SetNameForm onSubmit={setDisplayName} />
+      </>
+    );
+  }
+
+  // Normal app display after name is set
   const maxXP = 100;
   const currentXP = progress.totalXP ?? 0;
   const percentage = calculateXPProgress(currentXP, maxXP);
 
-  // Section lock logic for quiz sections
   const sectionCompletions = useMemo(() => {
     return sections.map((sec) => {
       const secQuestions = questions.filter((q) => q.section === sec.number);
@@ -74,14 +77,7 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
     <>
       <Header ref={headerRef} signOut={signOut} />
 
-      {/* Modal to set display name if not present */}
-      {showSetName && (
-        <SetNameForm
-          onSubmit={handleNameSubmit}
-        />
-      )}
-
-      {/* LevelUpBanner with headroom */}
+      {/* Level up banner */}
       {showBanner && (
         <div style={{ marginTop: `${headerHeight + spacing}px` }}>
           <LevelUpBanner onClose={() => setShowBanner(false)} />
@@ -96,7 +92,7 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
         maxWidth="1400px"
         margin="0 auto"
       >
-        {/* Left/Main Content */}
+        {/* Main Quiz Content */}
         <Flex direction="column" flex="1">
           <Heading level={2} marginBottom="medium">
             Hey {displayName || 'User'}! Let's jump in.
@@ -131,9 +127,10 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
           })}
         </Flex>
 
-        {/* Right Sidebar: User Stats */}
+        {/* Sidebar: User Stats */}
         <UserStatsPanel
           user={user}
+          userName={displayName}
           currentXP={currentXP}
           maxXP={maxXP}
           percentage={percentage}
@@ -144,6 +141,16 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
     </>
   );
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
