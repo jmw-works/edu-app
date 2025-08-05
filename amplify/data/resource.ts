@@ -11,7 +11,7 @@ const schema = a.schema({
       difficulty: a.enum(['easy', 'medium', 'hard']),
       answers: a.hasMany('Answer', 'questionId'),
     })
-    .authorization(allow => [
+    .authorization((allow) => [
       allow.authenticated().to(['create', 'read', 'update', 'delete']),
     ]),
 
@@ -23,7 +23,7 @@ const schema = a.schema({
       questionId: a.id().required(),
       question: a.belongsTo('Question', 'questionId'),
     })
-    .authorization(allow => [
+    .authorization((allow) => [
       allow.authenticated().to(['create', 'read', 'update', 'delete']),
     ]),
 
@@ -33,8 +33,11 @@ const schema = a.schema({
       userId: a.string().required(),
       totalXP: a.integer().default(0),
       answeredQuestions: a.id().array(),
+      completedSections: a.integer().array(), // sections completed (bounties)
+      dailyStreak: a.integer().default(0),
+      lastBlazeAt: a.datetime(),              // ✅ fixed casing
     })
-    .authorization(allow => [
+    .authorization((allow) => [
       allow.owner(),
     ]),
 
@@ -45,7 +48,7 @@ const schema = a.schema({
       displayName: a.string(),
       email: a.string(),
     })
-    .authorization(allow => [
+    .authorization((allow) => [
       allow.owner(),
     ]),
 });
@@ -55,6 +58,8 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
 });
+
+
 
 
 

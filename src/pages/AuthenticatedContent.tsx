@@ -18,10 +18,11 @@ import { calculateXPProgress } from '../utils/xp';
 type Attrs = Partial<Record<string, string>>;
 
 export default function AuthenticatedContent() {
-  const { user, signOut } = useAuthenticator();
+  const { user, signOut } = useAuthenticator(); // v6: user.userId, user.username
   const [attrs, setAttrs] = useState<Attrs | null>(null);
   const [attrsError, setAttrsError] = useState<Error | null>(null);
 
+  // Fetch Cognito attributes (email for fallback display name)
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -48,13 +49,13 @@ export default function AuthenticatedContent() {
     updateDisplayName,
   } = useUserProfile(userId, emailFromAttrs);
 
-  // Quiz data
+  // Quiz data (questions + progress + answer handler)
   const {
     questions,
-    progress,
+    progress,             // may be null while loading/first run
     loading: quizLoading,
     error: quizError,
-    handleAnswer,
+    handleAnswer,         // could be new or legacy signature
   } = useQuizData(userId);
 
   // Header sizing
@@ -62,26 +63,38 @@ export default function AuthenticatedContent() {
   const headerHeight = useHeaderHeight(headerRef);
   const spacing = 50;
 
-  // Publish header height as a CSS variable so components can respect it automatically
-  useEffect(() => {
-    // add a little breathing room below the header
-    const value = `${(headerHeight ?? 0) + 20}px`;
-    document.documentElement.style.setProperty('--tg-header-height', value);
-    return () => {
-      document.documentElement.style.removeProperty('--tg-header-height');
-    };
-  }, [headerHeight]);
-
-  // Level-up banner
+  // Level-up banner (simple show/hide)
   const [showBanner, setShowBanner] = useState(true);
 
-  // Safe guards so UI never crashes during initial loads
-  const safeProgress = progress ?? { totalXP: 0, answeredQuestions: [] as string[] };
+  // Build a type-safe fallback progress object to satisfy QuizSection prop types
+  const safeProgress = useMemo(() => {
+    if (progress) return progress;
+    return {
+      id: 'temp-progress',
+      userId: userId || 'unknown',
+      totalXP: 0,
+      answeredQuestions: [] as string[],
+      completedSections: [] as number[],
+      dailyStreak: 0,
+      lastBlazeAt: null as string | null,
+    } as const;
+  }, [progress, userId]);
+
+  // Normalize questions list
   const safeQuestions = Array.isArray(questions) ? questions : [];
 
+  // XP math
   const maxXP = 100;
   const currentXP = Number(safeProgress.totalXP ?? 0);
   const percentage = calculateXPProgress(currentXP, maxXP);
+
+  // Header stats
+  const bountiesCompleted = Array.isArray(safeProgress.completedSections)
+    ? safeProgress.completedSections.length
+    : 0;
+  const streak = typeof safeProgress.dailyStreak === 'number'
+    ? safeProgress.dailyStreak
+    : 0;
 
   // Compute display name shown in UI
   const displayName = useMemo(() => {
@@ -103,8 +116,8 @@ export default function AuthenticatedContent() {
   const [showNameModal, setShowNameModal] = useState(false);
 
   useEffect(() => {
-    if (!userId) return;                // wait for auth
-    if (profileLoading) return;         // wait for profile load to settle
+    if (!userId) return;          // wait for auth
+    if (profileLoading) return;   // wait for profile load to settle
 
     const promptedKey = `tg:namePrompted:${userId}`;
     const alreadyPrompted = localStorage.getItem(promptedKey) === '1';
@@ -127,14 +140,40 @@ export default function AuthenticatedContent() {
   }
   // ------------------------------------------------------------------------------
 
+  // --- TEMP SHIM: support either new or legacy handleAnswer signatures ---
+  // New expected signature: ({ questionId, isCorrect, xp? })
+  // Legacy signature: (questionId, userAnswer, correctAnswer, xpValue)
+  const submitAnswer = async (args: { questionId: string; isCorrect: boolean; xp?: number }) => {
+    const fn: any = handleAnswer as any;
+    if (typeof fn !== 'function') return;
+
+    // If function arity <= 1, assume new shape and pass the object
+    if (fn.length <= 1) {
+      return fn(args);
+    }
+
+    // Otherwise, call legacy signature (fill strings as needed)
+    const userAns = args.isCorrect ? 'correct' : 'incorrect';
+    const correctAns = args.isCorrect ? 'correct' : 'incorrect';
+    return fn(args.questionId, userAns, correctAns, args.xp ?? 0);
+  };
+  // -----------------------------------------------------------------------
+
   const mergedError = profileError ?? quizError ?? attrsError ?? null;
   const loading = quizLoading;
 
   return (
     <>
-      <Header ref={headerRef} signOut={signOut} />
+      <Header
+        ref={headerRef}
+        signOut={signOut}
+        currentXP={currentXP}
+        maxXP={maxXP}
+        bountiesCompleted={bountiesCompleted}
+        streakDays={streak}
+      />
 
-      {/* Level-up banner – offset handled inside the component via CSS var */}
+      {/* Level-up banner (banner handles header offset internally; we only add horizontal padding) */}
       {showBanner && (
         <div style={{ padding: '0 50px' }}>
           <LevelUpBanner
@@ -169,17 +208,12 @@ export default function AuthenticatedContent() {
         </div>
       )}
 
+      {/* Greeting */}
       <div style={{ padding: spacing }}>
-  <Heading level={2}>
-    Hey{' '}
-    <span className="tg-display-name" style={{ fontWeight: 500 }}>
-      {displayName}
-    </span>
-    ! Let&apos;s jump in.
-  </Heading>
-</div>
+        <Heading level={2}>Hey {displayName}! Let&apos;s jump in.</Heading>
+      </div>
 
-
+      {/* Main content */}
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
         <div style={{ flex: 1, paddingLeft: spacing, paddingRight: spacing }}>
           {loading ? (
@@ -187,6 +221,7 @@ export default function AuthenticatedContent() {
           ) : (
             sections.map((sec, index) => {
               const secQuestions = safeQuestions.filter((q) => q.section === sec.number);
+
               const prevComplete =
                 index === 0 ||
                 sections
@@ -208,7 +243,7 @@ export default function AuthenticatedContent() {
                   sectionNumber={sec.number}
                   questions={secQuestions}
                   progress={safeProgress}
-                  handleAnswer={handleAnswer}
+                  handleAnswer={submitAnswer}  // <-- use shim
                   isLocked={isLocked}
                   initialOpen={initialOpen}
                 />
@@ -217,6 +252,7 @@ export default function AuthenticatedContent() {
           )}
         </div>
 
+        {/* Right rail stats */}
         <UserStatsPanel
           user={{
             username: user?.username,
@@ -233,7 +269,7 @@ export default function AuthenticatedContent() {
         />
       </div>
 
-      {/* Display Name Modal */}
+      {/* Display Name Modal (first-time users or seeded/blank names) */}
       {showNameModal && (
         <SetDisplayNameModal
           loading={profileLoading}
@@ -243,6 +279,11 @@ export default function AuthenticatedContent() {
     </>
   );
 }
+
+
+
+
+
 
 
 

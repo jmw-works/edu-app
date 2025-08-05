@@ -1,35 +1,37 @@
 // src/App.tsx
 import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
+
 import AuthenticatedContent from './pages/AuthenticatedContent';
 
-function BrandHeader() {
+function AuthHeader() {
   return (
-    <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 12 }}>
-      <h1 style={{ margin: 0, fontSize: '1.6rem' }}>Welcome to Raccoon Bounty</h1>
+    <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+      <h2 style={{ margin: 0 }}>Welcome to Raccoon Bounty</h2>
       <img
-        src="/logo.png"           // put your file in /public/logo.png
-        alt="Raccoon Bounty Logo"
-        style={{ display: 'block', margin: '10px auto 0', maxWidth: 140 }}
+        src="/logo.png"
+        alt="Raccoon Bounty"
+        width={96}
+        height={96}
+        style={{ display: 'block', margin: '0.5rem auto 0' }}
       />
+      <p style={{ marginTop: '0.25rem', opacity: 0.85 }}>Treasure Hunter Gym</p>
     </div>
   );
 }
 
 export default function App() {
   return (
-    <Authenticator
-      // Only customize the auth cards; no outer wrappers that affect your app.
-      components={{
-        SignIn: { Header: BrandHeader },
-        SignUp: { Header: BrandHeader },
-      }}
-    >
-      {/* After authentication, only your app renders here (no auth wrappers). */}
+    <Authenticator components={{ Header: AuthHeader }}>
+      {/* At this point we’re authenticated; no null return means no TS error */}
       <AuthenticatedContent />
     </Authenticator>
   );
 }
+
+
+
+
 
 
 

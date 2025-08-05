@@ -1,14 +1,25 @@
 // src/components/SetDisplayNameModal.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Input, Text } from '@aws-amplify/ui-react';
 
 interface SetDisplayNameModalProps {
   onSubmit: (displayName: string) => void;
   loading?: boolean;
+  error?: string | null;
+  defaultValue?: string;
 }
 
-export function SetDisplayNameModal({ onSubmit, loading = false }: SetDisplayNameModalProps) {
-  const [value, setValue] = useState('');
+export function SetDisplayNameModal({
+  onSubmit,
+  loading = false,
+  error = null,
+  defaultValue = '',
+}: SetDisplayNameModalProps) {
+  const [value, setValue] = useState(defaultValue);
+
+  useEffect(() => {
+    setValue(defaultValue);
+  }, [defaultValue]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,10 +58,21 @@ export function SetDisplayNameModal({ onSubmit, loading = false }: SetDisplayNam
         <Text as="h2" fontWeight="bold" fontSize="large" marginBottom="medium">
           Choose Your Display Name
         </Text>
+        {error && (
+          <Text
+            as="p"
+            color="red"
+            fontSize="small"
+            marginBottom="small"
+            style={{ whiteSpace: 'pre-wrap' }}
+          >
+            {error}
+          </Text>
+        )}
         <Input
           placeholder="e.g. JaneDoe"
           value={value}
-          onChange={e => setValue((e.target as HTMLInputElement).value)}
+          onChange={(e) => setValue((e.target as HTMLInputElement).value)}
           maxLength={24}
           autoFocus
           required
@@ -68,5 +90,6 @@ export function SetDisplayNameModal({ onSubmit, loading = false }: SetDisplayNam
     </div>
   );
 }
+
 
 

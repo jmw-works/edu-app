@@ -279,6 +279,28 @@
               "attributes": [],
               "isArrayNullable": true
             },
+            "completedSections": {
+              "name": "completedSections",
+              "isArray": true,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true
+            },
+            "dailyStreak": {
+              "name": "dailyStreak",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "lastBlazeAt": {
+              "name": "lastBlazeAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
             "createdAt": {
               "name": "createdAt",
               "isArray": false,

@@ -1,3 +1,4 @@
+// src/components/QuizSection.tsx
 import { QuestionComponent } from './QuestionComponent';
 import { AccordionSection } from './AccordionSection';
 import type { QuestionUI, ProgressShape } from '../hooks/useQuizData';
@@ -14,7 +15,7 @@ interface QuizSectionProps {
   isLocked: boolean;
   initialOpen: boolean;
   educationalText: string;
-  sectionNumber: number; // kept for compatibility
+  sectionNumber: number;
 }
 
 export function QuizSection({
@@ -37,14 +38,16 @@ export function QuizSection({
         <QuestionComponent
           key={question.id}
           question={question}
-          onSubmit={(questionId, _userAnswer, _correctAnswer, xpValue) => {
-            // QuestionComponent only calls onSubmit when the user is correct.
-            // So we can safely mark isCorrect = true here.
-            handleAnswer({
-              questionId,
-              isCorrect: true,
-              xp: xpValue ?? 0,
-            });
+          onSubmit={async (questionId, _userAnswer, _correctAnswer, xpValue) => {
+            try {
+              await handleAnswer({
+                questionId,
+                isCorrect: true,
+                xp: xpValue ?? 0,
+              });
+            } catch (e) {
+              console.error('Failed to record answer:', e);
+            }
           }}
           isAnswered={progress?.answeredQuestions?.includes(question.id) || false}
         />
@@ -52,6 +55,8 @@ export function QuizSection({
     </AccordionSection>
   );
 }
+
+
 
 
 

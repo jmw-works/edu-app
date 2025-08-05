@@ -1,15 +1,15 @@
 // src/hooks/useQuizData.ts
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 
 const client = generateClient<Schema>();
 
+/** UI-friendly types for components */
 export type AnswerUI = {
   id: string;
   content: string;
   isCorrect: boolean;
-  questionId: string;
 };
 
 export type QuestionUI = {
@@ -23,36 +23,40 @@ export type QuestionUI = {
 export type ProgressShape = {
   id: string;
   userId: string;
-  totalXP: number | null;
-  answeredQuestions: string[] | null;
+  totalXP: number;
+  answeredQuestions: string[];
+  completedSections: number[];
+  dailyStreak: number;
+  lastBlazeAt: string | null;
 };
 
-type State<T> = {
-  data: T | null;
-  loading: boolean;
-  error: Error | null;
-};
+function normalize(str: string) {
+  return (str ?? '').trim().toLowerCase();
+}
 
 export function useQuizData(userId: string) {
-  const [questionsState, setQuestionsState] = useState<State<QuestionUI[]>>({
-    data: null,
-    loading: true,
-    error: null,
-  });
+  const [questions, setQuestions] = useState<QuestionUI[]>([]);
+  const [progress, setProgress] = useState<ProgressShape | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setErr] = useState<Error | null>(null);
 
-  const [progressState, setProgressState] = useState<State<ProgressShape>>({
-    data: null,
-    loading: true,
-    error: null,
-  });
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
-  // 1) Load Questions with Answers (flatten to UI shape)
+  // -------------------------
+  // Load Questions
+  // -------------------------
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const qRes = await client.models.Question.list({
-          // selectionSet ensures answers come back populated in v6
+        const res = await client.models.Question.list({
+          // ✅ Use dot-path selectionSet, not nested objects
           selectionSet: [
             'id',
             'text',
@@ -61,32 +65,27 @@ export function useQuizData(userId: string) {
             'answers.id',
             'answers.content',
             'answers.isCorrect',
-            'answers.questionId',
           ],
         });
 
-        const ui: QuestionUI[] =
-          qRes.data?.map((q) => ({
-            id: q.id,
-            text: q.text,
-            section: q.section,
-            xpValue: q.xpValue ?? 10,
-            answers:
-              (Array.isArray((q as any).answers) ? (q as any).answers : [])?.map((a: any) => ({
-                id: a.id,
-                content: a.content,
-                isCorrect: !!a.isCorrect,
-                questionId: a.questionId,
-              })) ?? [],
-          })) ?? [];
+        if (cancelled) return;
 
-        if (!cancelled) {
-          setQuestionsState({ data: ui, loading: false, error: null });
-        }
+        const items: QuestionUI[] = (res?.data ?? []).map((q: any) => ({
+          id: q.id,
+          text: q.text,
+          section: q.section,
+          xpValue: q.xpValue ?? 10,
+          answers:
+            (q.answers ?? []).map((a: any) => ({
+              id: a.id,
+              content: a.content,
+              isCorrect: !!a.isCorrect,
+            })) ?? [],
+        }));
+
+        if (mountedRef.current) setQuestions(items);
       } catch (e) {
-        if (!cancelled) {
-          setQuestionsState({ data: null, loading: false, error: e as Error });
-        }
+        if (mountedRef.current) setErr(e as Error);
       }
     })();
     return () => {
@@ -94,46 +93,68 @@ export function useQuizData(userId: string) {
     };
   }, []);
 
-  // 2) Load or create UserProgress
+  // -------------------------
+  // Load or create UserProgress
+  // -------------------------
   useEffect(() => {
     if (!userId) return;
+
     let cancelled = false;
+    setLoading(true);
 
     (async () => {
       try {
-        // Try to find existing progress for this user
         const list = await client.models.UserProgress.list({
           filter: { userId: { eq: userId } },
+          selectionSet: [
+            'id',
+            'userId',
+            'totalXP',
+            'answeredQuestions',
+            'completedSections',
+            'dailyStreak',
+            'lastBlazeAt',
+            'createdAt',
+            'updatedAt',
+          ],
         });
 
-        let progress = list.data?.[0] ?? null;
+        if (cancelled) return;
 
-        // Create if missing
-        if (!progress) {
+        let record = (list?.data && list.data[0]) ? list.data[0] : null;
+
+        // ✅ Clean branch: create if missing, then ensure non-null
+        if (!record) {
           const created = await client.models.UserProgress.create({
             userId,
             totalXP: 0,
             answeredQuestions: [],
+            completedSections: [],
+            dailyStreak: 0,
+            lastBlazeAt: null,
           });
-          progress = created.data!;
+          if (!created.data) {
+            throw new Error('Failed to create UserProgress');
+          }
+          record = created.data as any;
         }
 
-        if (!cancelled) {
-          setProgressState({
-            data: {
-              id: progress.id,
-              userId: progress.userId,
-              totalXP: progress.totalXP ?? 0,
-              answeredQuestions: (progress.answeredQuestions as string[]) ?? [],
-            },
-            loading: false,
-            error: null,
-          });
+        if (mountedRef.current && record) {
+          const p: ProgressShape = {
+            id: record.id as string,
+            userId: record.userId as string,
+            totalXP: (record.totalXP ?? 0) as number,
+            answeredQuestions: (record.answeredQuestions ?? []) as string[],
+            completedSections: (record.completedSections ?? []) as number[],
+            dailyStreak: (record.dailyStreak ?? 0) as number,
+            lastBlazeAt: (record.lastBlazeAt as string | null) ?? null,
+          };
+          setProgress(p);
         }
       } catch (e) {
-        if (!cancelled) {
-          setProgressState({ data: null, loading: false, error: e as Error });
-        }
+        if (mountedRef.current) setErr(e as Error);
+      } finally {
+        if (mountedRef.current) setLoading(false);
       }
     })();
 
@@ -142,81 +163,98 @@ export function useQuizData(userId: string) {
     };
   }, [userId]);
 
-  // 3) Handle Answer (optimistic + persist)
+  // Build quick lookup: section -> questionIds
+  const sectionToIds = useMemo(() => {
+    const map = new Map<number, string[]>();
+    for (const q of questions) {
+      const arr = map.get(q.section) ?? [];
+      arr.push(q.id);
+      map.set(q.section, arr);
+    }
+    return map;
+  }, [questions]);
+
+  // id -> question
+  const byId = useMemo(() => {
+    const m = new Map<string, QuestionUI>();
+    questions.forEach((q) => m.set(q.id, q));
+    return m;
+  }, [questions]);
+
+  // -------------------------
+  // Handle Answer
+  // -------------------------
   const handleAnswer = useCallback(
-    async (args: { questionId: string; isCorrect: boolean; xp?: number }) => {
-      const { questionId, isCorrect, xp = 0 } = args;
-      if (!isCorrect) return;
-      if (!progressState.data) return; // not ready yet
+    async (
+      questionId: string,
+      userAnswer: string,
+      correctAnswer: string,
+      xpValue: number
+    ) => {
+      if (!progress || !userId) return;
 
-      const prev = progressState.data;
-      const already = (prev.answeredQuestions ?? []).includes(questionId);
-      const newAnswered = already
-        ? prev.answeredQuestions ?? []
-        : [...(prev.answeredQuestions ?? []), questionId];
-      const newXP = prev.totalXP! + (already ? 0 : xp);
+      const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
+      if (!isCorrect) return; // UI shows "Wrong!" — no persistence
 
-      // Optimistic UI update
-      setProgressState((s) =>
-        s.data
-          ? {
-              ...s,
-              data: {
-                ...s.data,
-                totalXP: newXP,
-                answeredQuestions: newAnswered,
-              },
-            }
-          : s
-      );
+      const alreadyAnswered = progress.answeredQuestions.includes(questionId);
+      const newAnswered = alreadyAnswered
+        ? progress.answeredQuestions
+        : [...progress.answeredQuestions, questionId];
 
-      // Persist in background
-      try {
-        await client.models.UserProgress.update({
-          id: prev.id,
-          userId: prev.userId,
-          totalXP: newXP,
-          answeredQuestions: newAnswered,
-        });
-      } catch (e) {
-        // Soft-rollback: refetch (keeps code simple and resilient)
-        try {
-          const fresh = await client.models.UserProgress.get({ id: prev.id });
-          if (fresh.data) {
-            setProgressState((s) => ({
-              ...s,
-              data: {
-                id: fresh.data!.id,
-                userId: fresh.data!.userId,
-                totalXP: fresh.data!.totalXP ?? 0,
-                answeredQuestions: (fresh.data!.answeredQuestions as string[]) ?? [],
-              },
-              loading: false,
-              error: null,
-            }));
-          }
-        } catch (inner) {
-          setProgressState((s) => ({ ...s, error: (e as Error) ?? (inner as Error) }));
+      const question = byId.get(questionId);
+      const section = question?.section ?? null;
+
+      let newCompletedSections = progress.completedSections;
+      if (section != null) {
+        const sectionQIds = sectionToIds.get(section) ?? [];
+        const allInSectionAnswered = sectionQIds.every((id) =>
+          newAnswered.includes(id)
+        );
+        const hasSection = newCompletedSections.includes(section);
+        if (allInSectionAnswered && !hasSection) {
+          newCompletedSections = [...newCompletedSections, section];
         }
       }
+
+      const newXP = alreadyAnswered
+        ? progress.totalXP
+        : (progress.totalXP ?? 0) + (xpValue ?? 10);
+
+      // Optimistic UI
+      const optimistic: ProgressShape = {
+        ...progress,
+        totalXP: newXP,
+        answeredQuestions: newAnswered,
+        completedSections: newCompletedSections,
+      };
+      setProgress(optimistic);
+
+      try {
+        await client.models.UserProgress.update({
+          id: progress.id,
+          totalXP: newXP,
+          answeredQuestions: newAnswered,
+          completedSections: newCompletedSections,
+        });
+      } catch (e) {
+        // Roll back on failure
+        setProgress(progress);
+        setErr(e as Error);
+      }
     },
-    [progressState.data]
+    [progress, userId, byId, sectionToIds]
   );
 
-  // Public shape
   return {
-    questions: questionsState.data ?? [],
-    progress: progressState.data ?? {
-      id: '',
-      userId,
-      totalXP: 0,
-      answeredQuestions: [],
-    },
-    loading: questionsState.loading || progressState.loading,
-    error: questionsState.error ?? progressState.error ?? null,
+    questions,
+    progress,
+    loading,
+    error,
     handleAnswer,
   };
 }
+
+
 
 
 

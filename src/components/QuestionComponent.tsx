@@ -1,3 +1,4 @@
+// src/components/QuestionComponent.tsx
 import { useState, useLayoutEffect, useRef, useCallback } from 'react';
 import type { QuestionUI } from '../hooks/useQuizData';
 
@@ -72,9 +73,7 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
   }, [userAnswer, getCursorPosition]);
 
   useLayoutEffect(() => {
-    if (isIncorrect) {
-      setUserAnswer('');
-    }
+    if (isIncorrect) setUserAnswer('');
   }, [isIncorrect]);
 
   function handleSubmit() {
@@ -87,7 +86,7 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     if (userNormalized === correctNormalized) {
       onSubmit(
         question.id,
-        correctAnswer,
+        fullUserAnswer,     // <-- pass the actual typed value
         correctAnswer,
         question.xpValue ?? 10
       );
@@ -104,9 +103,7 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
   }
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
-    if (userAnswer === '') {
-      e.target.setSelectionRange(0, 0);
-    }
+    if (userAnswer === '') e.target.setSelectionRange(0, 0);
   }
 
   const displayValue = isAnswered ? correctAnswer : buildDisplay(userAnswer);
@@ -126,7 +123,7 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
           fontSize: '1rem',
           color: isAnswered ? '#888' : '#000',
           backgroundColor: isAnswered ? '#f5f5f5' : '#fff',
-          border: '1px solid #ccc', // <-- fixed
+          border: '1px solid #ccc',
           fontFamily: 'monospace',
           marginRight: '1rem',
         }}
@@ -138,6 +135,7 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     </div>
   );
 }
+
 
 
 
