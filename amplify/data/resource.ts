@@ -12,7 +12,6 @@ const schema = a.schema({
       answers: a.hasMany('Answer', 'questionId'),
     })
     .authorization(allow => [
-      allow.publicApiKey().to(['read']),
       allow.authenticated().to(['create', 'read', 'update', 'delete']),
     ]),
 
@@ -25,7 +24,6 @@ const schema = a.schema({
       question: a.belongsTo('Question', 'questionId'),
     })
     .authorization(allow => [
-      allow.publicApiKey().to(['read']),
       allow.authenticated().to(['create', 'read', 'update', 'delete']),
     ]),
 
@@ -57,6 +55,7 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
 });
+
 
 
 
