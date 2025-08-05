@@ -1,12 +1,12 @@
 // src/types/UserProfileTypes.ts
-
-export interface UserProfile {
+export type UserProfile = {
   id: string;
   userId: string;
-  displayName?: string | null;
-  email?: string | null;
+  email: string;
+  displayName?: string; // Make optional (can be undefined if not set)
   owner?: string | null;
   createdAt: string;
   updatedAt: string;
-}
+};
+
 

@@ -1,3 +1,4 @@
+// src/pages/AuthenticatedContent.tsx
 import { useMemo, useRef, useState } from 'react';
 import { Header } from '../components/Header';
 import { QuizSection } from '../components/QuizSection';
@@ -7,6 +8,8 @@ import { useHeaderHeight } from '../hooks/useHeaderHeight';
 import { calculateXPProgress } from '../utils/xp';
 import LevelUpBanner from '../components/LevelUpBanner';
 import UserStatsPanel from '../components/UserStatsPanel';
+import SetNameForm from '../components/SetNameForm';
+import { useUserProfile } from '../hooks/useUserProfile'; // <-- you may need to create this if not present
 import { Flex, Heading } from '@aws-amplify/ui-react';
 
 interface AuthenticatedContentProps {
@@ -23,6 +26,13 @@ interface AuthenticatedContentProps {
 }
 
 export default function AuthenticatedContent({ user, signOut }: AuthenticatedContentProps) {
+  // User Profile (from DB): allows for custom displayName
+  const { profile, updateDisplayName, loading: profileLoading } = useUserProfile(
+    user.userId,
+    user.attributes?.email
+  );
+  const displayName = profile?.displayName || user.attributes?.name || user.username || (user.attributes?.email?.split('@')[0]) || 'User';
+
   const { questions, progress, handleAnswer } = useQuizData(user.userId);
   const headerRef = useRef<HTMLDivElement>(null);
   const headerHeight = useHeaderHeight(headerRef);
@@ -33,15 +43,19 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
   const currentXP = progress.totalXP ?? 0;
   const percentage = calculateXPProgress(currentXP, maxXP);
 
-  const userName = useMemo(() => {
-    return (
-      user?.attributes?.name ||
-      user?.username ||
-      (user?.attributes?.email ? user.attributes.email.split('@')[0] : 'User')
-    );
-  }, [user]);
+  // If loading profile, show nothing (or loading state)
+  if (profileLoading) return null;
 
-  // Only for demo: implement SetNameForm if needed when name is not set
+  // If no display name, prompt for it
+  if (!profile?.displayName) {
+    return (
+      <SetNameForm
+        onSubmit={async (name) => {
+          await updateDisplayName(name);
+        }}
+      />
+    );
+  }
 
   return (
     <>
@@ -65,9 +79,8 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
         {/* Left/Main Content */}
         <Flex direction="column" flex="1">
           <Heading level={2} marginBottom="medium">
-            Hey {userName}! Let's jump in.
+            Hey {displayName}! Let's jump in.
           </Heading>
-
           {sections.map((sec, index) => {
             const secQuestions = questions.filter((q) => q.section === sec.number);
             // Section lock logic
@@ -97,8 +110,6 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
             );
           })}
         </Flex>
-
-        {/* Right Sidebar: User Stats */}
         <UserStatsPanel
           user={user}
           currentXP={currentXP}
@@ -111,6 +122,7 @@ export default function AuthenticatedContent({ user, signOut }: AuthenticatedCon
     </>
   );
 }
+
 
 
 
