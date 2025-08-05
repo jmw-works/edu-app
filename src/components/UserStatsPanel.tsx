@@ -1,12 +1,16 @@
 import { Flex, Heading, Text, View, useTheme } from '@aws-amplify/ui-react';
 
 interface UserAttributes {
+  name?: string;
   email?: string;
   [key: string]: unknown;
 }
 
 interface UserStatsPanelProps {
-  user: { username?: string };
+  user: {
+    username?: string;
+    attributes: UserAttributes;
+  };
   currentXP: number;
   maxXP: number;
   percentage: number;
@@ -14,7 +18,7 @@ interface UserStatsPanelProps {
   spacing: number;
 }
 
-export function UserStatsPanel({
+export default function UserStatsPanel({
   user,
   currentXP,
   maxXP,
@@ -23,6 +27,12 @@ export function UserStatsPanel({
   spacing,
 }: UserStatsPanelProps) {
   const { tokens } = useTheme();
+
+  const shownName =
+    user.attributes?.name ||
+    user.username ||
+    user.attributes?.email ||
+    'N/A';
 
   return (
     <Flex
@@ -41,7 +51,10 @@ export function UserStatsPanel({
     >
       <Heading level={4} marginBottom="small">User Stats</Heading>
       <Text fontSize="small" marginBottom="xs">
-  User: {user.username || 'N/A'}
+        <strong>User:</strong> {shownName}
+      </Text>
+      <Text fontSize="small" marginBottom="xs" color={tokens.colors.font.secondary}>
+        <strong>Email:</strong> {user.attributes?.email ?? 'N/A'}
       </Text>
       <Text fontWeight="bold" marginBottom="xs">
         XP: {currentXP} / {maxXP}
@@ -68,4 +81,10 @@ export function UserStatsPanel({
     </Flex>
   );
 }
+
+
+
+
+
+
 

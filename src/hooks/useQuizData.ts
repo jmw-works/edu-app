@@ -1,4 +1,5 @@
 // src/hooks/useQuizData.ts
+
 import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import type { Schema } from '../../amplify/data/resource';
@@ -27,10 +28,12 @@ export function useQuizData(userId: string) {
     if (userId) {
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   async function fetchData() {
     try {
+      // Fetch questions
       const { data: questionData, errors } = await client.models.Question.list({
         selectionSet: [
           'id',
@@ -47,6 +50,7 @@ export function useQuizData(userId: string) {
       if (errors) console.error('Question fetch errors:', errors);
       const questionsList = questionData as QuestionWithAnswers[];
 
+      // Seed questions if needed
       const hasSection1 = questionsList.some((q) => q.section === 1);
       const hasSection2 = questionsList.some((q) => q.section === 2);
       const hasSection3 = questionsList.some((q) => q.section === 3);
@@ -71,6 +75,7 @@ export function useQuizData(userId: string) {
         setQuestions(questionsList);
       }
 
+      // Fetch UserProgress
       const { data: progressData, errors: progressErrors } = await client.models.UserProgress.list({
         filter: { userId: { eq: userId } },
       });
@@ -79,6 +84,7 @@ export function useQuizData(userId: string) {
 
       let userProgress = progressData[0] as UserProgress | undefined;
 
+      // Create new UserProgress if none exists
       if (!userProgress) {
         const { data: createdProgress, errors: createErrors } = await client.models.UserProgress.create({
           userId,
@@ -93,7 +99,8 @@ export function useQuizData(userId: string) {
           : createdProgress[0];
       }
 
-      setProgress({ ...defaultProgress, ...userProgress });
+      // Safely set progress (the fix!)
+      setProgress(userProgress ? { ...defaultProgress, ...userProgress } : defaultProgress);
     } catch (error) {
       console.error('Fetch data error:', error);
       setProgress(defaultProgress);
@@ -212,11 +219,31 @@ export function useQuizData(userId: string) {
     }
   }
 
+  // (Optional) If you have refreshProgress elsewhere:
+  async function refreshProgress() {
+    try {
+      const { data: progressData, errors: progressErrors } = await client.models.UserProgress.list({
+        filter: { userId: { eq: userId } },
+      });
+
+      if (progressErrors) console.error('Progress fetch errors:', progressErrors);
+
+      const userProgress = progressData[0] as UserProgress | undefined;
+      setProgress(userProgress ? { ...defaultProgress, ...userProgress } : defaultProgress);
+    } catch (error) {
+      console.error('Refresh progress error:', error);
+      setProgress(defaultProgress);
+    }
+  }
+
   return {
     questions,
     progress,
     handleAnswer,
+    refreshProgress, // (Optional, export if needed)
   };
 }
+
+
 
 

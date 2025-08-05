@@ -1,13 +1,19 @@
 {
   "auth": {
-    "user_pool_id": "us-west-1_fGjdMTH5T",
+    "user_pool_id": "us-west-1_iRwuAdhva",
     "aws_region": "us-west-1",
-    "user_pool_client_id": "4clljpqf55e2mk8g68vpf83i50",
-    "identity_pool_id": "us-west-1:2448a25c-2c88-4528-9cad-bbd4c94b0282",
+    "user_pool_client_id": "2u1fs1fp2gvrf428i2elgtrdg8",
+    "identity_pool_id": "us-west-1:9343f1ea-ce34-48b2-a730-4af40dcd8f33",
     "mfa_methods": [],
-    "standard_required_attributes": ["email"],
-    "username_attributes": ["email"],
-    "user_verification_types": ["email"],
+    "standard_required_attributes": [
+      "email"
+    ],
+    "username_attributes": [
+      "email"
+    ],
+    "user_verification_types": [
+      "email"
+    ],
     "groups": [],
     "mfa_configuration": "NONE",
     "password_policy": {
@@ -20,38 +26,71 @@
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://hib7was46ncq7ikjsaspt74q44.appsync-api.us-west-1.amazonaws.com/graphql",
+    "url": "https://qlfaoyfybzh5pkcp4hbvllktyy.appsync-api.us-west-1.amazonaws.com/graphql",
     "aws_region": "us-west-1",
-    "api_key": "da2-afbxws2crzdsxhbfoeqjuhiabm",
+    "api_key": "da2-kjenlmmsenf25cqyo7x5qs57sa",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
-    "authorization_types": ["API_KEY", "AWS_IAM"],
+    "authorization_types": [
+      "API_KEY",
+      "AWS_IAM"
+    ],
     "model_introspection": {
       "version": 1,
       "models": {
         "Question": {
           "name": "Question",
           "fields": {
-            "id": { "name": "id", "isArray": false, "type": "ID", "isRequired": true, "attributes": [] },
-            "text": { "name": "text", "isArray": false, "type": "String", "isRequired": true, "attributes": [] },
-            "section": { "name": "section", "isArray": false, "type": "Int", "isRequired": true, "attributes": [] },
-            "xpValue": { "name": "xpValue", "isArray": false, "type": "Int", "isRequired": false, "attributes": [] },
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "text": {
+              "name": "text",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "section": {
+              "name": "section",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "xpValue": {
+              "name": "xpValue",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
             "difficulty": {
               "name": "difficulty",
               "isArray": false,
-              "type": { "enum": "QuestionDifficulty" },
+              "type": {
+                "enum": "QuestionDifficulty"
+              },
               "isRequired": false,
               "attributes": []
             },
             "answers": {
               "name": "answers",
               "isArray": true,
-              "type": { "model": "Answer" },
+              "type": {
+                "model": "Answer"
+              },
               "isRequired": false,
               "attributes": [],
               "isArrayNullable": true,
               "association": {
                 "connectionType": "HAS_MANY",
-                "associatedWith": ["questionId"]
+                "associatedWith": [
+                  "questionId"
+                ]
               }
             },
             "createdAt": {
@@ -74,14 +113,38 @@
           "syncable": true,
           "pluralName": "Questions",
           "attributes": [
-            { "type": "model", "properties": {} },
-            { "type": "key", "properties": { "fields": ["id"] } },
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "fields": [
+                  "id"
+                ]
+              }
+            },
             {
               "type": "auth",
               "properties": {
                 "rules": [
-                  { "allow": "public", "provider": "apiKey", "operations": ["read"] },
-                  { "allow": "private", "operations": ["create", "read", "update", "delete"] }
+                  {
+                    "allow": "public",
+                    "provider": "apiKey",
+                    "operations": [
+                      "read"
+                    ]
+                  },
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "read",
+                      "update",
+                      "delete"
+                    ]
+                  }
                 ]
               }
             }
@@ -95,19 +158,47 @@
         "Answer": {
           "name": "Answer",
           "fields": {
-            "id": { "name": "id", "isArray": false, "type": "ID", "isRequired": true, "attributes": [] },
-            "content": { "name": "content", "isArray": false, "type": "String", "isRequired": true, "attributes": [] },
-            "isCorrect": { "name": "isCorrect", "isArray": false, "type": "Boolean", "isRequired": true, "attributes": [] },
-            "questionId": { "name": "questionId", "isArray": false, "type": "ID", "isRequired": true, "attributes": [] },
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "content": {
+              "name": "content",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "isCorrect": {
+              "name": "isCorrect",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": true,
+              "attributes": []
+            },
+            "questionId": {
+              "name": "questionId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
             "question": {
               "name": "question",
               "isArray": false,
-              "type": { "model": "Question" },
+              "type": {
+                "model": "Question"
+              },
               "isRequired": false,
               "attributes": [],
               "association": {
                 "connectionType": "BELONGS_TO",
-                "targetNames": ["questionId"]
+                "targetNames": [
+                  "questionId"
+                ]
               }
             },
             "createdAt": {
@@ -130,14 +221,38 @@
           "syncable": true,
           "pluralName": "Answers",
           "attributes": [
-            { "type": "model", "properties": {} },
-            { "type": "key", "properties": { "fields": ["id"] } },
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "fields": [
+                  "id"
+                ]
+              }
+            },
             {
               "type": "auth",
               "properties": {
                 "rules": [
-                  { "allow": "public", "provider": "apiKey", "operations": ["read"] },
-                  { "allow": "private", "operations": ["create", "read", "update", "delete"] }
+                  {
+                    "allow": "public",
+                    "provider": "apiKey",
+                    "operations": [
+                      "read"
+                    ]
+                  },
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "read",
+                      "update",
+                      "delete"
+                    ]
+                  }
                 ]
               }
             }
@@ -151,9 +266,34 @@
         "UserProgress": {
           "name": "UserProgress",
           "fields": {
-            "id": { "name": "id", "isArray": false, "type": "ID", "isRequired": true, "attributes": [] },
-            "userId": { "name": "userId", "isArray": false, "type": "String", "isRequired": true, "attributes": [] },
-            "totalXP": { "name": "totalXP", "isArray": false, "type": "Int", "isRequired": false, "attributes": [] },
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "userId": {
+              "name": "userId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "displayName": {
+              "name": "displayName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "totalXP": {
+              "name": "totalXP",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
             "answeredQuestions": {
               "name": "answeredQuestions",
               "isArray": true,
@@ -182,8 +322,18 @@
           "syncable": true,
           "pluralName": "UserProgresses",
           "attributes": [
-            { "type": "model", "properties": {} },
-            { "type": "key", "properties": { "fields": ["id"] } },
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "fields": [
+                  "id"
+                ]
+              }
+            },
             {
               "type": "auth",
               "properties": {
@@ -193,7 +343,12 @@
                     "ownerField": "owner",
                     "allow": "owner",
                     "identityClaim": "cognito:username",
-                    "operations": ["create", "update", "delete", "read"]
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
                   }
                 ]
               }
@@ -209,11 +364,15 @@
       "enums": {
         "QuestionDifficulty": {
           "name": "QuestionDifficulty",
-          "values": ["easy", "medium", "hard"]
+          "values": [
+            "easy",
+            "medium",
+            "hard"
+          ]
         }
       },
       "nonModels": {}
     }
   },
-  "version": "1.3"
+  "version": "1.4"
 }

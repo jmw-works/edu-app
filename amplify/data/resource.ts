@@ -33,6 +33,7 @@ const schema = a.schema({
     .model({
       id: a.id().required(),
       userId: a.string().required(),
+      displayName: a.string(),         // <-- No `.required()`
       totalXP: a.integer().default(0),
       answeredQuestions: a.id().array(),
     })
@@ -52,6 +53,8 @@ export const data = defineData({
     },
   },
 });
+
+
 
 
 
