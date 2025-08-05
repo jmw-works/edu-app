@@ -1,22 +1,20 @@
 import { QuestionComponent } from './QuestionComponent';
 import { AccordionSection } from './AccordionSection';
-import type { QuestionWithAnswers } from '../types/QuestionTypes';
-import type { UserProgress } from '../types/UserProgressTypes';
+import type { QuestionUI, ProgressShape } from '../hooks/useQuizData';
 
 interface QuizSectionProps {
   title: string;
-  questions: QuestionWithAnswers[];
-  progress: UserProgress;
-  handleAnswer: (
-    questionId: string,
-    userAnswer: string,
-    correctAnswer: string,
-    xpValue: number
-  ) => void;
+  questions: QuestionUI[];
+  progress: ProgressShape;
+  handleAnswer: (args: {
+    questionId: string;
+    isCorrect: boolean;
+    xp?: number;
+  }) => void | Promise<void>;
   isLocked: boolean;
   initialOpen: boolean;
   educationalText: string;
-  sectionNumber: number; // ✅ Added this to fix the TS error
+  sectionNumber: number; // kept for compatibility
 }
 
 export function QuizSection({
@@ -39,13 +37,23 @@ export function QuizSection({
         <QuestionComponent
           key={question.id}
           question={question}
-          onSubmit={handleAnswer}
-          isAnswered={progress.answeredQuestions?.includes(question.id) || false}
+          onSubmit={(questionId, _userAnswer, _correctAnswer, xpValue) => {
+            // QuestionComponent only calls onSubmit when the user is correct.
+            // So we can safely mark isCorrect = true here.
+            handleAnswer({
+              questionId,
+              isCorrect: true,
+              xp: xpValue ?? 0,
+            });
+          }}
+          isAnswered={progress?.answeredQuestions?.includes(question.id) || false}
         />
       ))}
     </AccordionSection>
   );
 }
+
+
 
 
 

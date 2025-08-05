@@ -1,8 +1,8 @@
 import { useState, useLayoutEffect, useRef, useCallback } from 'react';
-import type { QuestionWithAnswers } from '../types/QuestionTypes';
+import type { QuestionUI } from '../hooks/useQuizData';
 
 interface Props {
-  question: QuestionWithAnswers;
+  question: QuestionUI;
   onSubmit: (
     questionId: string,
     userAnswer: string,
@@ -17,7 +17,8 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
   const [isIncorrect, setIsIncorrect] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const correctAnswer = question.answers.find((ans) => ans.isCorrect)?.content?.trim() || '';
+  const correctAnswer =
+    question.answers.find((ans) => ans.isCorrect)?.content?.trim() || '';
   const parts: string[] = correctAnswer.split(/\s+/);
   const lengths = parts.map((p: string) => p.length);
   const placeholderChar = '-';
@@ -47,19 +48,21 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     return s;
   };
 
-  // Fix: useCallback ensures stable reference for dependency array
-  const getCursorPosition = useCallback((letters: number) => {
-    let pos = 0;
-    let remaining = letters;
-    for (let i = 0; i < lengths.length; i++) {
-      const l = lengths[i];
-      const toPlace = Math.min(l, remaining);
-      pos += toPlace;
-      remaining -= toPlace;
-      if (remaining > 0 && i < lengths.length - 1) pos += 1;
-    }
-    return pos;
-  }, [lengths]);
+  const getCursorPosition = useCallback(
+    (letters: number) => {
+      let pos = 0;
+      let remaining = letters;
+      for (let i = 0; i < lengths.length; i++) {
+        const l = lengths[i];
+        const toPlace = Math.min(l, remaining);
+        pos += toPlace;
+        remaining -= toPlace;
+        if (remaining > 0 && i < lengths.length - 1) pos += 1;
+      }
+      return pos;
+    },
+    [lengths]
+  );
 
   useLayoutEffect(() => {
     if (inputRef.current) {
@@ -82,7 +85,12 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     const correctNormalized = correctAnswer.trim().toLowerCase();
 
     if (userNormalized === correctNormalized) {
-      onSubmit(question.id, correctAnswer, correctAnswer, question.xpValue ?? 10);
+      onSubmit(
+        question.id,
+        correctAnswer,
+        correctAnswer,
+        question.xpValue ?? 10
+      );
       setIsIncorrect(false);
     } else {
       setIsIncorrect(true);
@@ -118,21 +126,21 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
           fontSize: '1rem',
           color: isAnswered ? '#888' : '#000',
           backgroundColor: isAnswered ? '#f5f5f5' : '#fff',
-          border: '1px solid #ccc',
+          border: '1px solid #ccc', // <-- fixed
           fontFamily: 'monospace',
           marginRight: '1rem',
         }}
       />
-      <button
-        onClick={handleSubmit}
-        disabled={isAnswered || !userAnswer.trim()}
-      >
+      <button onClick={handleSubmit} disabled={isAnswered || !userAnswer.trim()}>
         {isAnswered ? 'Correct!' : 'Submit'}
       </button>
       {isIncorrect && <p style={{ color: 'red' }}>Wrong!</p>}
     </div>
   );
 }
+
+
+
 
 
 

@@ -1,48 +1,86 @@
-import { useEffect, useState } from 'react';
-// Only import this if it exists! If not, temporarily remove for now and regenerate types when Amplify backend is ready.
-// import type { Schema } from '../amplify/data/resource';
+// src/hooks/useUserProfile.ts
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../amplify/data/resource'; // <- make sure this path is correct
 
-// Remove the Amplify client call for now if types aren't ready. Provide a mock type for UserProfile:
-interface UserProfile {
-  id: string;
-  email: string;
-  displayName?: string;
-}
+type UserProfileModel = Schema['UserProfile']['type'];
 
-export function useUserProfile(userId?: string, email?: string) {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
+const client = generateClient<Schema>(); // <- typed client; exposes client.models.UserProfile
+
+export function useUserProfile(userId?: string, email?: string | null) {
+  const [profile, setProfile] = useState<UserProfileModel | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const hasIdentity = Boolean(userId);
 
   useEffect(() => {
-    if (!userId && !email) return;
+    if (!hasIdentity) return;
+    let cancelled = false;
 
-    setLoading(true);
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await client.models.UserProfile.list({
+          filter: { userId: { eq: userId! } },
+        });
+        const first = (res?.data ?? [])[0] ?? null;
+        if (!cancelled) setProfile(first);
+      } catch (e) {
+        if (!cancelled) setError(e as Error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
 
-    // -----
-    // Replace this mock with your Amplify query once types are generated and available!
-    setTimeout(() => {
-      setProfile({
-        id: 'demo',
-        email: email ?? 'demo@email.com',
-        displayName: 'Demo User',
-      });
-      setLoading(false);
-    }, 500);
-    // -----
-  }, [userId, email]);
+    return () => {
+      cancelled = true;
+    };
+  }, [hasIdentity, userId]);
 
-  const updateDisplayName = async (displayName: string) => {
-    if (!profile) return;
-    setLoading(true);
-    // Replace with real update code!
-    setTimeout(() => {
-      setProfile({ ...profile, displayName });
-      setLoading(false);
-    }, 500);
-  };
+  const updateDisplayName = useCallback(
+    async (displayName: string) => {
+      if (!hasIdentity) return;
+      setLoading(true);
+      setError(null);
+      try {
+        if (profile?.id) {
+          // Update existing profile
+          const updated = await client.models.UserProfile.update({
+            id: profile.id,
+            displayName,
+          });
+          setProfile((updated as any)?.data ?? updated ?? profile);
+        } else {
+          // Create first-time profile
+          const created = await client.models.UserProfile.create({
+            userId: userId!,                 // required by your schema
+            email: (email ?? null) as any,   // many schemas use Nullable<string>
+            displayName,
+          });
+          setProfile((created as any)?.data ?? created ?? null);
+        }
+      } catch (e) {
+        setError(e as Error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [profile?.id, hasIdentity, userId, email]
+  );
 
-  return { profile, loading, updateDisplayName };
+  return useMemo(
+    () => ({ profile, loading, error, updateDisplayName }),
+    [profile, loading, error, updateDisplayName]
+  );
 }
+
+
+
+
+
+
 
 
 

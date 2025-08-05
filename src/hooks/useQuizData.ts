@@ -1,248 +1,226 @@
 // src/hooks/useQuizData.ts
-
-import { useState, useEffect } from 'react';
-import { generateClient } from 'aws-amplify/api';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
-import type { QuestionWithAnswers } from '../types/QuestionTypes';
 
 const client = generateClient<Schema>();
 
-type UserProgress = Schema['UserProgress']['type'];
+export type AnswerUI = {
+  id: string;
+  content: string;
+  isCorrect: boolean;
+  questionId: string;
+};
 
-const now = new Date().toISOString();
+export type QuestionUI = {
+  id: string;
+  text: string;
+  section: number;
+  xpValue?: number | null;
+  answers: AnswerUI[];
+};
 
-const defaultProgress: UserProgress = {
-  id: '',
-  userId: '',
-  totalXP: 0,
-  answeredQuestions: [],
-  createdAt: now,
-  updatedAt: now,
+export type ProgressShape = {
+  id: string;
+  userId: string;
+  totalXP: number | null;
+  answeredQuestions: string[] | null;
+};
+
+type State<T> = {
+  data: T | null;
+  loading: boolean;
+  error: Error | null;
 };
 
 export function useQuizData(userId: string) {
-  const [questions, setQuestions] = useState<QuestionWithAnswers[]>([]);
-  const [progress, setProgress] = useState<UserProgress>(defaultProgress);
+  const [questionsState, setQuestionsState] = useState<State<QuestionUI[]>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
 
+  const [progressState, setProgressState] = useState<State<ProgressShape>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  // 1) Load Questions with Answers (flatten to UI shape)
   useEffect(() => {
-    if (userId) {
-      fetchData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
-
-  async function fetchData() {
-    try {
-      // Fetch questions
-      const { data: questionData, errors } = await client.models.Question.list({
-        selectionSet: [
-          'id',
-          'text',
-          'section',
-          'xpValue',
-          'difficulty',
-          'createdAt',
-          'updatedAt',
-          'answers.*',
-        ],
-      });
-
-      if (errors) console.error('Question fetch errors:', errors);
-      const questionsList = questionData as QuestionWithAnswers[];
-
-      // Seed questions if needed
-      const hasSection1 = questionsList.some((q) => q.section === 1);
-      const hasSection2 = questionsList.some((q) => q.section === 2);
-      const hasSection3 = questionsList.some((q) => q.section === 3);
-
-      if (!hasSection1 || !hasSection2 || !hasSection3) {
-        await seedFakeQuestions(hasSection1, hasSection2, hasSection3);
-        const { data: updatedQuestionData, errors: updatedErrors } = await client.models.Question.list({
+    let cancelled = false;
+    (async () => {
+      try {
+        const qRes = await client.models.Question.list({
+          // selectionSet ensures answers come back populated in v6
           selectionSet: [
             'id',
             'text',
             'section',
             'xpValue',
-            'difficulty',
-            'createdAt',
-            'updatedAt',
-            'answers.*',
+            'answers.id',
+            'answers.content',
+            'answers.isCorrect',
+            'answers.questionId',
           ],
         });
-        if (updatedErrors) console.error('Updated question fetch errors:', updatedErrors);
-        setQuestions(updatedQuestionData as QuestionWithAnswers[]);
-      } else {
-        setQuestions(questionsList);
-      }
 
-      // Fetch UserProgress
-      const { data: progressData, errors: progressErrors } = await client.models.UserProgress.list({
-        filter: { userId: { eq: userId } },
-      });
+        const ui: QuestionUI[] =
+          qRes.data?.map((q) => ({
+            id: q.id,
+            text: q.text,
+            section: q.section,
+            xpValue: q.xpValue ?? 10,
+            answers:
+              (Array.isArray((q as any).answers) ? (q as any).answers : [])?.map((a: any) => ({
+                id: a.id,
+                content: a.content,
+                isCorrect: !!a.isCorrect,
+                questionId: a.questionId,
+              })) ?? [],
+          })) ?? [];
 
-      if (progressErrors) console.error('Progress fetch errors:', progressErrors);
-
-      let userProgress = progressData[0] as UserProgress | undefined;
-
-      // Create new UserProgress if none exists
-      if (!userProgress) {
-        const { data: createdProgress, errors: createErrors } = await client.models.UserProgress.create({
-          userId,
-          totalXP: 0,
-          answeredQuestions: [],
-        });
-
-        if (createErrors) console.error('Progress create errors:', createErrors);
-
-        userProgress = !Array.isArray(createdProgress)
-          ? createdProgress
-          : createdProgress[0];
-      }
-
-      // Safely set progress (the fix!)
-      setProgress(userProgress ? { ...defaultProgress, ...userProgress } : defaultProgress);
-    } catch (error) {
-      console.error('Fetch data error:', error);
-      setProgress(defaultProgress);
-    }
-  }
-
-  async function seedFakeQuestions(
-    hasSection1 = true,
-    hasSection2 = true,
-    hasSection3 = true
-  ) {
-    try {
-      if (!hasSection1) {
-        const { data: q1 } = await client.models.Question.create({
-          text: 'What is the capital of France?',
-          section: 1,
-          xpValue: 10,
-          difficulty: 'easy',
-        });
-
-        const question = !Array.isArray(q1) ? q1 : q1[0];
-        if (question?.id) {
-          await createAnswers(question.id, [
-            { content: 'Paris', isCorrect: true },
-            { content: 'London', isCorrect: false },
-            { content: 'Berlin', isCorrect: false },
-            { content: 'Madrid', isCorrect: false },
-          ]);
+        if (!cancelled) {
+          setQuestionsState({ data: ui, loading: false, error: null });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setQuestionsState({ data: null, loading: false, error: e as Error });
         }
       }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-      if (!hasSection2) {
-        const { data: q2 } = await client.models.Question.create({
-          text: 'What is the square root of 16?',
-          section: 2,
-          xpValue: 15,
-          difficulty: 'medium',
+  // 2) Load or create UserProgress
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // Try to find existing progress for this user
+        const list = await client.models.UserProgress.list({
+          filter: { userId: { eq: userId } },
         });
 
-        const question = !Array.isArray(q2) ? q2 : q2[0];
-        if (question?.id) {
-          await createAnswers(question.id, [
-            { content: '4', isCorrect: true },
-            { content: '2', isCorrect: false },
-            { content: '8', isCorrect: false },
-            { content: '16', isCorrect: false },
-          ]);
+        let progress = list.data?.[0] ?? null;
+
+        // Create if missing
+        if (!progress) {
+          const created = await client.models.UserProgress.create({
+            userId,
+            totalXP: 0,
+            answeredQuestions: [],
+          });
+          progress = created.data!;
+        }
+
+        if (!cancelled) {
+          setProgressState({
+            data: {
+              id: progress.id,
+              userId: progress.userId,
+              totalXP: progress.totalXP ?? 0,
+              answeredQuestions: (progress.answeredQuestions as string[]) ?? [],
+            },
+            loading: false,
+            error: null,
+          });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setProgressState({ data: null, loading: false, error: e as Error });
         }
       }
+    })();
 
-      if (!hasSection3) {
-        const { data: q3 } = await client.models.Question.create({
-          text: 'What is the speed of light?',
-          section: 3,
-          xpValue: 20,
-          difficulty: 'hard',
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // 3) Handle Answer (optimistic + persist)
+  const handleAnswer = useCallback(
+    async (args: { questionId: string; isCorrect: boolean; xp?: number }) => {
+      const { questionId, isCorrect, xp = 0 } = args;
+      if (!isCorrect) return;
+      if (!progressState.data) return; // not ready yet
+
+      const prev = progressState.data;
+      const already = (prev.answeredQuestions ?? []).includes(questionId);
+      const newAnswered = already
+        ? prev.answeredQuestions ?? []
+        : [...(prev.answeredQuestions ?? []), questionId];
+      const newXP = prev.totalXP! + (already ? 0 : xp);
+
+      // Optimistic UI update
+      setProgressState((s) =>
+        s.data
+          ? {
+              ...s,
+              data: {
+                ...s.data,
+                totalXP: newXP,
+                answeredQuestions: newAnswered,
+              },
+            }
+          : s
+      );
+
+      // Persist in background
+      try {
+        await client.models.UserProgress.update({
+          id: prev.id,
+          userId: prev.userId,
+          totalXP: newXP,
+          answeredQuestions: newAnswered,
         });
-
-        const question = !Array.isArray(q3) ? q3 : q3[0];
-        if (question?.id) {
-          await createAnswers(question.id, [
-            { content: '299792458 m/s', isCorrect: true },
-            { content: '150000000 m/s', isCorrect: false },
-            { content: '300000000 m/s', isCorrect: false },
-            { content: '100000000 m/s', isCorrect: false },
-          ]);
+      } catch (e) {
+        // Soft-rollback: refetch (keeps code simple and resilient)
+        try {
+          const fresh = await client.models.UserProgress.get({ id: prev.id });
+          if (fresh.data) {
+            setProgressState((s) => ({
+              ...s,
+              data: {
+                id: fresh.data!.id,
+                userId: fresh.data!.userId,
+                totalXP: fresh.data!.totalXP ?? 0,
+                answeredQuestions: (fresh.data!.answeredQuestions as string[]) ?? [],
+              },
+              loading: false,
+              error: null,
+            }));
+          }
+        } catch (inner) {
+          setProgressState((s) => ({ ...s, error: (e as Error) ?? (inner as Error) }));
         }
       }
-    } catch (error) {
-      console.error('Seeding error:', error);
-    }
-  }
+    },
+    [progressState.data]
+  );
 
-  async function createAnswers(
-    questionId: string,
-    answers: { content: string; isCorrect: boolean }[]
-  ) {
-    for (const answer of answers) {
-      await client.models.Answer.create({
-        content: answer.content,
-        isCorrect: answer.isCorrect,
-        questionId,
-      });
-    }
-  }
-
-  async function handleAnswer(
-    questionId: string,
-    userAnswer: string,
-    correctAnswer: string,
-    xpValue: number
-  ) {
-    const normalizedUserAnswer = userAnswer.trim().toLowerCase();
-    const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
-
-    if (normalizedUserAnswer === normalizedCorrectAnswer && progress) {
-      const updatedAnswered = [...(progress.answeredQuestions || []), questionId];
-      const updatedXP = (progress.totalXP || 0) + xpValue;
-
-      const { data: updatedProgressRaw } = await client.models.UserProgress.update({
-        id: progress.id,
-        answeredQuestions: updatedAnswered,
-        totalXP: updatedXP,
-      });
-
-      const updatedProgress = !Array.isArray(updatedProgressRaw)
-        ? updatedProgressRaw
-        : updatedProgressRaw[0];
-
-      setProgress({
-        ...progress,
-        ...updatedProgress,
-        totalXP: updatedXP,
-        answeredQuestions: updatedAnswered,
-      });
-    }
-  }
-
-  // (Optional) If you have refreshProgress elsewhere:
-  async function refreshProgress() {
-    try {
-      const { data: progressData, errors: progressErrors } = await client.models.UserProgress.list({
-        filter: { userId: { eq: userId } },
-      });
-
-      if (progressErrors) console.error('Progress fetch errors:', progressErrors);
-
-      const userProgress = progressData[0] as UserProgress | undefined;
-      setProgress(userProgress ? { ...defaultProgress, ...userProgress } : defaultProgress);
-    } catch (error) {
-      console.error('Refresh progress error:', error);
-      setProgress(defaultProgress);
-    }
-  }
-
+  // Public shape
   return {
-    questions,
-    progress,
+    questions: questionsState.data ?? [],
+    progress: progressState.data ?? {
+      id: '',
+      userId,
+      totalXP: 0,
+      answeredQuestions: [],
+    },
+    loading: questionsState.loading || progressState.loading,
+    error: questionsState.error ?? progressState.error ?? null,
     handleAnswer,
-    refreshProgress, // (Optional, export if needed)
   };
 }
+
+
+
+
 
 
 

@@ -1,59 +1,39 @@
 // src/App.tsx
-import { fetchUserAttributes, type UserAttributeKey } from 'aws-amplify/auth';
-import { useEffect, useState } from 'react';
 import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import AuthenticatedContent from './pages/AuthenticatedContent';
 
-type Attrs = Partial<Record<UserAttributeKey, string>>; // <-- match v6 API
+function BrandHeader() {
+  return (
+    <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 12 }}>
+      <h1 style={{ margin: 0, fontSize: '1.6rem' }}>Welcome to Raccoon Bounty</h1>
+      <img
+        src="/logo.png"           // put your file in /public/logo.png
+        alt="Raccoon Bounty Logo"
+        style={{ display: 'block', margin: '10px auto 0', maxWidth: 140 }}
+      />
+    </div>
+  );
+}
 
 export default function App() {
-  const [attrs, setAttrs] = useState<Attrs | null>(null);
-  const [attrsError, setAttrsError] = useState<Error | null>(null);
-
   return (
-    <Authenticator>
-      {({ user, signOut }) => {
-        useEffect(() => {
-          let cancelled = false;
-          (async () => {
-            setAttrs(null);
-            setAttrsError(null);
-            try {
-              const a = await fetchUserAttributes();
-              if (!cancelled) setAttrs(a);              // ✅ types now align
-            } catch (e) {
-              if (!cancelled) setAttrsError(e as Error);
-            }
-          })();
-          return () => { cancelled = true; };
-        }, [user?.userId]);
-
-        const derivedEmail =
-          attrs?.email ??
-          (user?.signInDetails?.loginId as string | undefined);
-
-        const derivedName =
-          attrs?.name ?? attrs?.given_name ?? undefined;
-
-        return (
-          <AuthenticatedContent
-            user={{
-              userId: user?.userId as string,
-              username: user?.username,
-              attributes: {
-                email: derivedEmail,
-                name: derivedName,
-              } as any,
-            }}
-            signOut={signOut}
-            attrsError={attrsError}  // see next section
-          />
-        );
+    <Authenticator
+      // Only customize the auth cards; no outer wrappers that affect your app.
+      components={{
+        SignIn: { Header: BrandHeader },
+        SignUp: { Header: BrandHeader },
       }}
+    >
+      {/* After authentication, only your app renders here (no auth wrappers). */}
+      <AuthenticatedContent />
     </Authenticator>
   );
 }
+
+
+
+
 
 
 
