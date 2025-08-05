@@ -1,3 +1,4 @@
+// src/components/UserStatsPanel.tsx
 import { Flex, Heading, Text, View, useTheme } from '@aws-amplify/ui-react';
 
 interface UserAttributes {
@@ -28,59 +29,43 @@ export default function UserStatsPanel({
 }: UserStatsPanelProps) {
   const { tokens } = useTheme();
 
+  // Prefer the persisted displayName (provided via user.attributes.name)
   const shownName =
-    user.attributes?.name ||
+    (typeof user.attributes?.name === 'string' && user.attributes.name) ||
     user.username ||
     user.attributes?.email ||
     'N/A';
 
   return (
-    <Flex
-      direction="column"
-      width="250px"
-      padding="medium"
-      backgroundColor="#f0f0f0"
-      borderRadius="m"
-      boxShadow="small"
+    <View
+      padding={spacing}
       style={{
         position: 'sticky',
-        top: `${headerHeight + spacing}px`,
-        alignSelf: 'start',
-        minHeight: '300px',
+        top: headerHeight + spacing,
+        maxWidth: '320px',
       }}
     >
-      <Heading level={4} marginBottom="small">User Stats</Heading>
-      <Text fontSize="small" marginBottom="xs">
-        <strong>User:</strong> {shownName}
-      </Text>
-      <Text fontSize="small" marginBottom="xs" color={tokens.colors.font.secondary}>
-        <strong>Email:</strong> {user.attributes?.email ?? 'N/A'}
-      </Text>
-      <Text fontWeight="bold" marginBottom="xs">
+      <Heading level={3}>User Stats</Heading>
+      <Text>User: {shownName}</Text>
+      <Text>Email: {user.attributes?.email ?? 'N/A'}</Text>
+      <Text>
         XP: {currentXP} / {maxXP}
       </Text>
-      <View
-        as="progress"
-        max={100}
-        value={percentage}
-        width="100%"
-        height="medium"
-        backgroundColor="#ddd"
-        color="#4caf50"
-        borderRadius="s"
-        marginBottom="medium"
-      />
-      <Text fontSize="small" color={tokens.colors.font.secondary} marginBottom="small">
-        Well done! You're on your way to mastering the quiz. Keep the streak going!
+      <Text>
+        Well done! You&apos;re on your way to mastering the quiz. Keep the
+        streak going!
       </Text>
-      <Flex direction="column" gap="xs">
-        <Text fontSize="small">✔ Enroll in a section</Text>
-        <Text fontSize="small">✔ Answer a question</Text>
-        <Text fontSize="small">○ Complete a section</Text>
-      </Flex>
-    </Flex>
+      <ul style={{ listStyleType: 'none', paddingLeft: 0 }}>
+        <li>✔ Enroll in a section</li>
+        <li>✔ Answer a question</li>
+        <li>{percentage >= 100 ? '✔' : '○'} Complete a section</li>
+      </ul>
+    </View>
   );
 }
+
+
+
 
 
 

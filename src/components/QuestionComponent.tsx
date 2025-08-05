@@ -1,6 +1,4 @@
-// src/components/QuestionComponent.tsx
-
-import { useState, useLayoutEffect, useRef } from 'react';
+import { useState, useLayoutEffect, useRef, useCallback } from 'react';
 import type { QuestionWithAnswers } from '../types/QuestionTypes';
 
 interface Props {
@@ -49,7 +47,8 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     return s;
   };
 
-  const getCursorPosition = (letters: number) => {
+  // Fix: useCallback ensures stable reference for dependency array
+  const getCursorPosition = useCallback((letters: number) => {
     let pos = 0;
     let remaining = letters;
     for (let i = 0; i < lengths.length; i++) {
@@ -60,14 +59,14 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
       if (remaining > 0 && i < lengths.length - 1) pos += 1;
     }
     return pos;
-  };
+  }, [lengths]);
 
   useLayoutEffect(() => {
     if (inputRef.current) {
       inputRef.current.selectionStart = getCursorPosition(userAnswer.length);
       inputRef.current.selectionEnd = inputRef.current.selectionStart;
     }
-  }, [userAnswer]);
+  }, [userAnswer, getCursorPosition]);
 
   useLayoutEffect(() => {
     if (isIncorrect) {
@@ -134,6 +133,10 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     </div>
   );
 }
+
+
+
+
 
 
 

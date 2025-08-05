@@ -1,6 +1,4 @@
-import { useEffect } from 'react';
 import { Authenticator } from '@aws-amplify/ui-react';
-import { getCurrentUser, signOut } from 'aws-amplify/auth';
 import AuthenticatedContent from './pages/AuthenticatedContent';
 import '@aws-amplify/ui-react/styles.css';
 import './App.css';
@@ -16,15 +14,6 @@ type AmplifyUser = {
 };
 
 function App() {
-  // Force sign out any existing session on app load
-  useEffect(() => {
-    getCurrentUser()
-      .then(() => signOut())
-      .catch(() => {
-        // Not signed in, nothing to do
-      });
-  }, []);
-
   return (
     <div className="app-root">
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '2rem 0' }}>
@@ -58,6 +47,7 @@ function App() {
 }
 
 export default App;
+
 
 
 
