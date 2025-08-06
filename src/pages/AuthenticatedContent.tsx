@@ -1,6 +1,12 @@
 // src/pages/AuthenticatedContent.tsx
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { useAuthenticator, Heading, Text, useTheme, Button, Card, Image } from '@aws-amplify/ui-react';
+import {
+  useAuthenticator,
+  Heading,
+  Text,
+  useTheme,
+  Card,
+} from '@aws-amplify/ui-react';
 import { fetchUserAttributes } from 'aws-amplify/auth';
 import { getUrl } from 'aws-amplify/storage';
 
@@ -16,8 +22,6 @@ import { useAmplifyClient } from '../hooks/useAmplifyClient';
 import { useHeaderHeight } from '../hooks/useHeaderHeight';
 import { calculateXPProgress } from '../utils/xp';
 
-import type { HandleAnswer, Question } from '../types/QuestionTypes';
-
 type CampaignCard = {
   id: string;
   title: string;
@@ -27,10 +31,13 @@ type CampaignCard = {
 };
 
 export default function AuthenticatedContent() {
-  const { user, signOut, authStatus } = useAuthenticator((ctx) => [ctx.user, ctx.authStatus]);
+  const { user, signOut, authStatus } = useAuthenticator((ctx) => [
+    ctx.user,
+    ctx.authStatus,
+  ]);
   const userId = user?.userId ?? '';
-  const client = useAmplifyClient();
   const { tokens } = useTheme();
+  const client = useAmplifyClient();
 
   const [attrs, setAttrs] = useState<Record<string, string> | null>(null);
   const [attrsError, setAttrsError] = useState<Error | null>(null);
@@ -51,7 +58,6 @@ export default function AuthenticatedContent() {
     loading: quizLoading,
     error: quizError,
     handleAnswer,
-    orderedSectionNumbers,
   } = useCampaignQuizData(userId, activeCampaignId);
 
   const emailFromAttrs: string | null = attrs?.email ?? null;
@@ -65,33 +71,39 @@ export default function AuthenticatedContent() {
 
   useEffect(() => {
     let mounted = true;
-    if (authStatus !== 'authenticated') {
-      setAttrs(null);
-      setAttrsError(null);
-      return;
-    }
-    (async () => {
-      try {
-        const a = await fetchUserAttributes();
-        if (mounted) setAttrs((a ?? {}) as Record<string, string>);
-      } catch (e) {
-        if (mounted) setAttrsError(e as Error);
-      }
-    })();
+    if (authStatus !== 'authenticated') return;
+
+    fetchUserAttributes()
+      .then((a) => mounted && setAttrs((a ?? {}) as Record<string, string>))
+      .catch((e) => mounted && setAttrsError(e as Error));
+
     return () => {
       mounted = false;
     };
   }, [authStatus]);
 
   useEffect(() => {
-    // Sample campaigns; in production, fetch this from a backend source
     const exampleCampaigns: CampaignCard[] = [
       {
-        id: 'demo-campaign',
+        id: 'demo-campaign-1',
         title: 'Treasure Hunt Basics',
         description: 'Learn the basics of treasure hunting.',
-        thumbnailKey: 'thumbnails/campaign1.jpg',
+        thumbnailKey: 'thumbnails/campaign1.png',
         isLocked: false,
+      },
+      {
+        id: 'demo-campaign-2',
+        title: 'Advanced Clue Solving',
+        description: 'Put your clue-decoding skills to the test.',
+        thumbnailKey: 'thumbnails/campaign2.png',
+        isLocked: false,
+      },
+      {
+        id: 'demo-campaign-3',
+        title: 'Legendary Bounty',
+        description: 'A mythical treasure awaits the worthy.',
+        thumbnailKey: 'thumbnails/campaign3.png',
+        isLocked: true,
       },
     ];
     setCampaigns(exampleCampaigns);
@@ -145,9 +157,7 @@ export default function AuthenticatedContent() {
 
   async function handleSaveDisplayName(name: string) {
     await updateDisplayName(name);
-    try {
-      if (userId) localStorage.setItem(`rb:namePrompted:${userId}`, '1');
-    } catch {}
+    if (userId) localStorage.setItem(`rb:namePrompted:${userId}`, '1');
     setShowNameModal(false);
   }
 
@@ -207,60 +217,77 @@ export default function AuthenticatedContent() {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: spacing, marginBottom: 12 }}>
-          <Heading level={2}>Hey {displayName}! Let&apos;s jump in.</Heading>
-        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, padding: `0 ${spacing}px` }}>
+          {!activeCampaignId && (
+            <div style={{ width: 130, display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {campaigns.map((campaign) => {
+                const isLocked = campaign.isLocked;
+                const imgUrl = thumbnails[campaign.id];
 
-        {!activeCampaignId && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', padding: `0 ${spacing}px` }}>
-            {campaigns.map((campaign) => (
-              <Card
-                key={campaign.id}
-                variation="elevated"
-                style={{ width: 260, cursor: campaign.isLocked ? 'not-allowed' : 'pointer' }}
-                onClick={() => onSelectCampaign(campaign.id, campaign.isLocked)}
-              >
-                {thumbnails[campaign.id] && (
-                  <Image src={thumbnails[campaign.id]} alt={campaign.title} width="100%" />
-                )}
-                <Heading level={5} marginTop="small">{campaign.title}</Heading>
-                <Text fontSize="0.85rem">{campaign.description}</Text>
-                {campaign.isLocked && <Text color="red">🔒 Locked</Text>}
-              </Card>
+                return (
+                  <div
+                    key={campaign.id}
+                    onClick={() => onSelectCampaign(campaign.id, isLocked)}
+                    style={{
+                      opacity: isLocked ? 0.4 : 1,
+                      cursor: isLocked ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      position: 'relative',
+                    }}
+                    title={campaign.description || ''}
+                  >
+                    {imgUrl && (
+                      <img
+                        src={imgUrl}
+                        alt={campaign.title}
+                        width={100}
+                        height={100}
+                        style={{
+                          objectFit: 'contain',
+                          marginBottom: 8,
+                        }}
+                      />
+                    )}
+                    <Text fontSize="0.75rem">{campaign.title}</Text>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div style={{ flex: 2 }}>
+            <div style={{ marginBottom: 16 }}>
+              <Heading level={2}>Hey {displayName}! Let&apos;s jump in.</Heading>
+            </div>
+            {activeCampaignId && questions.map((question) => (
+              <QuizSection
+                key={question.id}
+                title={`Section ${question.section}`}
+                educationalText=""
+                questions={[question]}
+                progress={safeProgress}
+                handleAnswer={handleAnswer}
+                isLocked={false}
+                initialOpen={true}
+              />
             ))}
           </div>
-        )}
 
-        {activeCampaignId && (
-          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', padding: `0 ${spacing}px` }}>
-            <div style={{ flex: 1 }}>
-              {questions.map((question) => (
-                <QuizSection
-                  key={question.id}
-                  title={`Section ${question.section}`}
-                  educationalText=""
-                  questions={[question]}
-                  progress={safeProgress}
-                  handleAnswer={handleAnswer}
-                  isLocked={false}
-                  initialOpen={true}
-                />
-              ))}
-            </div>
-
-            <UserStatsPanel
-              user={{
-                username: user?.username,
-                attributes: { name: displayName, email: emailFromAttrs ?? undefined },
-              }}
-              currentXP={currentXP}
-              maxXP={maxXP}
-              percentage={percentage}
-              headerHeight={headerHeight}
-              spacing={spacing}
-            />
-          </div>
-        )}
+          <UserStatsPanel
+            user={{
+              username: user?.username,
+              attributes: { name: displayName, email: emailFromAttrs ?? undefined },
+            }}
+            currentXP={currentXP}
+            maxXP={maxXP}
+            percentage={percentage}
+            headerHeight={headerHeight}
+            spacing={spacing}
+          />
+        </div>
 
         {showNameModal && (
           <SetDisplayNameModal loading={profileLoading} onSubmit={handleSaveDisplayName} />
@@ -269,4 +296,8 @@ export default function AuthenticatedContent() {
     </>
   );
 }
+
+
+
+
 

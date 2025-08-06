@@ -7,15 +7,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dependencies
+node_modules/
+dist/
+dist-ssr/
 *.local
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
@@ -23,16 +24,19 @@ dist-ssr
 *.sln
 *.sw?
 
-# AWS Amplify (local config, backend, and sandbox artifacts)
+# AWS Amplify (Gen 2 config, sandbox, and local state)
 .amplify/
-amplify/
 amplifyconfiguration*
-amplify_outputs*    # <-- allows ignoring root-level outputs
+amplify_outputs*
 
-# BUT! Don't ignore the file in public for deployment!
-!public/amplify_outputs.json
+# Ignore everything in amplify, except explicitly allowed files
+amplify/**
+!amplify/
+!amplify/storage/
+!amplify/storage/resource.ts
 
-# If using Gen2 sandbox, ignore only the root file,
-# but allow the public one to be checked in:
+# Sandbox-specific file (ignore only root copy)
+# The copy in /public is tracked for deployment metadata
 /amplify_outputs.json
+!public/amplify_outputs.json
 
