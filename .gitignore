@@ -34,6 +34,7 @@ amplify/**
 !amplify/
 !amplify/storage/
 !amplify/storage/resource.ts
+!amplify/storage/thumbnailfiles
 
 # Sandbox-specific file (ignore only root copy)
 # The copy in /public is tracked for deployment metadata

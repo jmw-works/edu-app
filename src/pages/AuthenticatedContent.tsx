@@ -1,14 +1,11 @@
-// src/pages/AuthenticatedContent.tsx
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   useAuthenticator,
   Heading,
   Text,
   useTheme,
-  Card,
 } from '@aws-amplify/ui-react';
 import { fetchUserAttributes } from 'aws-amplify/auth';
-import { getUrl } from 'aws-amplify/storage';
 
 import { Header } from '../components/Header';
 import { QuizSection } from '../components/QuizSection';
@@ -18,7 +15,6 @@ import { SetDisplayNameModal } from '../components/SetDisplayNameModal';
 
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useCampaignQuizData } from '../hooks/useCampaignQuizData';
-import { useAmplifyClient } from '../hooks/useAmplifyClient';
 import { useHeaderHeight } from '../hooks/useHeaderHeight';
 import { calculateXPProgress } from '../utils/xp';
 
@@ -26,9 +22,11 @@ type CampaignCard = {
   id: string;
   title: string;
   description?: string | null;
-  thumbnailKey?: string | null;
+  thumbnailFile?: string; // filename only
   isLocked?: boolean;
 };
+
+const THUMBNAIL_BASE_URL = 'https://amplify-eduapp-johnmichae-amplifydataamplifycodege-5iaqrtqya2bm.s3.us-west-1.amazonaws.com/public/thumbnails';
 
 export default function AuthenticatedContent() {
   const { user, signOut, authStatus } = useAuthenticator((ctx) => [
@@ -37,13 +35,11 @@ export default function AuthenticatedContent() {
   ]);
   const userId = user?.userId ?? '';
   const { tokens } = useTheme();
-  const client = useAmplifyClient();
 
   const [attrs, setAttrs] = useState<Record<string, string> | null>(null);
   const [attrsError, setAttrsError] = useState<Error | null>(null);
 
   const [campaigns, setCampaigns] = useState<CampaignCard[]>([]);
-  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
   const [showBanner, setShowBanner] = useState(true);
   const [showNameModal, setShowNameModal] = useState(false);
@@ -88,49 +84,26 @@ export default function AuthenticatedContent() {
         id: 'demo-campaign-1',
         title: 'Treasure Hunt Basics',
         description: 'Learn the basics of treasure hunting.',
-        thumbnailKey: 'thumbnails/campaign1.png',
+        thumbnailFile: 'campaign1.png',
         isLocked: false,
       },
       {
         id: 'demo-campaign-2',
         title: 'Advanced Clue Solving',
         description: 'Put your clue-decoding skills to the test.',
-        thumbnailKey: 'thumbnails/campaign2.png',
+        thumbnailFile: 'campaign2.png',
         isLocked: false,
       },
       {
         id: 'demo-campaign-3',
         title: 'Legendary Bounty',
         description: 'A mythical treasure awaits the worthy.',
-        thumbnailKey: 'thumbnails/campaign3.png',
+        thumbnailFile: 'campaign3.png',
         isLocked: true,
       },
     ];
     setCampaigns(exampleCampaigns);
   }, []);
-
-  useEffect(() => {
-    async function fetchThumbnails() {
-      const urls: Record<string, string> = {};
-      await Promise.all(
-        campaigns.map(async (campaign) => {
-          if (campaign.thumbnailKey) {
-            try {
-              const { url } = await getUrl({ key: campaign.thumbnailKey });
-              urls[campaign.id] = url.href;
-            } catch {
-              urls[campaign.id] = '';
-            }
-          }
-        })
-      );
-      setThumbnails(urls);
-    }
-
-    if (campaigns.length) {
-      fetchThumbnails();
-    }
-  }, [campaigns]);
 
   const displayName = useMemo(() => {
     const fromProfile = (profile?.displayName ?? '').trim();
@@ -222,7 +195,9 @@ export default function AuthenticatedContent() {
             <div style={{ width: 130, display: 'flex', flexDirection: 'column', gap: 24 }}>
               {campaigns.map((campaign) => {
                 const isLocked = campaign.isLocked;
-                const imgUrl = thumbnails[campaign.id];
+                const imgUrl = campaign.thumbnailFile
+                  ? `${THUMBNAIL_BASE_URL}/${campaign.thumbnailFile}`
+                  : '';
 
                 return (
                   <div
@@ -239,7 +214,7 @@ export default function AuthenticatedContent() {
                     }}
                     title={campaign.description || ''}
                   >
-                    {imgUrl && (
+                    {imgUrl ? (
                       <img
                         src={imgUrl}
                         alt={campaign.title}
@@ -250,6 +225,8 @@ export default function AuthenticatedContent() {
                           marginBottom: 8,
                         }}
                       />
+                    ) : (
+                      <div style={{ width: 100, height: 100, background: '#eee', marginBottom: 8 }} />
                     )}
                     <Text fontSize="0.75rem">{campaign.title}</Text>
                   </div>
@@ -262,18 +239,19 @@ export default function AuthenticatedContent() {
             <div style={{ marginBottom: 16 }}>
               <Heading level={2}>Hey {displayName}! Let&apos;s jump in.</Heading>
             </div>
-            {activeCampaignId && questions.map((question) => (
-              <QuizSection
-                key={question.id}
-                title={`Section ${question.section}`}
-                educationalText=""
-                questions={[question]}
-                progress={safeProgress}
-                handleAnswer={handleAnswer}
-                isLocked={false}
-                initialOpen={true}
-              />
-            ))}
+            {activeCampaignId &&
+              questions.map((question) => (
+                <QuizSection
+                  key={question.id}
+                  title={`Section ${question.section}`}
+                  educationalText=""
+                  questions={[question]}
+                  progress={safeProgress}
+                  handleAnswer={handleAnswer}
+                  isLocked={false}
+                  initialOpen={true}
+                />
+              ))}
           </div>
 
           <UserStatsPanel
@@ -296,6 +274,7 @@ export default function AuthenticatedContent() {
     </>
   );
 }
+
 
 
 
