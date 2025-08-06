@@ -1,6 +1,7 @@
 // src/components/CampaignGallery.tsx
-import { CSSProperties, memo } from 'react';
+import { memo, type CSSProperties } from 'react';
 import { useCampaignThumbnail } from '../hooks/useCampaignThumbnail';
+
 
 export type CampaignCard = {
   id: string;
