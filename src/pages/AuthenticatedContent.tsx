@@ -1,3 +1,4 @@
+// src/pages/AuthenticatedContent.tsx
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   useAuthenticator,
@@ -6,6 +7,9 @@ import {
   useTheme,
 } from '@aws-amplify/ui-react';
 import { fetchUserAttributes } from 'aws-amplify/auth';
+
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../amplify/data/resource';
 
 import { Header } from '../components/Header';
 import { QuizSection } from '../components/QuizSection';
@@ -26,7 +30,10 @@ type CampaignCard = {
   isLocked?: boolean;
 };
 
-const THUMBNAIL_BASE_URL = 'https://amplify-eduapp-johnmichae-amplifydataamplifycodege-5iaqrtqya2bm.s3.us-west-1.amazonaws.com/public/thumbnails';
+const THUMBNAIL_BASE_URL =
+  'https://amplify-dg9xethdak0e7-mai-amplifydataamplifycodege-5wzlzqzwsqsa.s3.us-west-1.amazonaws.com/public/thumbnails';
+
+const client = generateClient<Schema>();
 
 export default function AuthenticatedContent() {
   const { user, signOut, authStatus } = useAuthenticator((ctx) => [
@@ -65,6 +72,7 @@ export default function AuthenticatedContent() {
     updateDisplayName,
   } = useUserProfile(userId, emailFromAttrs);
 
+  // Fetch user attributes
   useEffect(() => {
     let mounted = true;
     if (authStatus !== 'authenticated') return;
@@ -78,32 +86,34 @@ export default function AuthenticatedContent() {
     };
   }, [authStatus]);
 
+  // Fetch real campaign data from Amplify Data
   useEffect(() => {
-    const exampleCampaigns: CampaignCard[] = [
-      {
-        id: 'demo-campaign-1',
-        title: 'Treasure Hunt Basics',
-        description: 'Learn the basics of treasure hunting.',
-        thumbnailFile: 'campaign1.png',
-        isLocked: false,
-      },
-      {
-        id: 'demo-campaign-2',
-        title: 'Advanced Clue Solving',
-        description: 'Put your clue-decoding skills to the test.',
-        thumbnailFile: 'campaign2.png',
-        isLocked: false,
-      },
-      {
-        id: 'demo-campaign-3',
-        title: 'Legendary Bounty',
-        description: 'A mythical treasure awaits the worthy.',
-        thumbnailFile: 'campaign3.png',
-        isLocked: true,
-      },
-    ];
-    setCampaigns(exampleCampaigns);
-  }, []);
+    async function loadCampaigns() {
+      try {
+        const { data, errors } = await client.models.Campaign.list({
+          filter: { isActive: { eq: true } },
+        });
+
+        if (errors) console.error('Campaign list errors:', errors);
+
+        const parsed: CampaignCard[] = (data ?? []).map((c) => ({
+          id: c.id,
+          title: c.title,
+          description: c.description ?? '',
+          thumbnailFile: c.thumbnailKey ?? '',
+          isLocked: false, // update logic later if needed
+        }));
+
+        setCampaigns(parsed);
+      } catch (err) {
+        console.error('Failed to fetch campaigns:', err);
+      }
+    }
+
+    if (authStatus === 'authenticated') {
+      loadCampaigns();
+    }
+  }, [authStatus]);
 
   const displayName = useMemo(() => {
     const fromProfile = (profile?.displayName ?? '').trim();
@@ -274,6 +284,7 @@ export default function AuthenticatedContent() {
     </>
   );
 }
+
 
 
 
