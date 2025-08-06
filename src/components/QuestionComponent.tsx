@@ -1,15 +1,17 @@
 // src/components/QuestionComponent.tsx
 import { useState, useLayoutEffect, useRef, useCallback } from 'react';
-import type { QuestionUI } from '../hooks/useQuizData';
+import type { HandleAnswer } from '../hooks/useCampaignQuizData';
 
 interface Props {
-  question: QuestionUI;
-  onSubmit: (
-    questionId: string,
-    userAnswer: string,
-    correctAnswer: string,
-    xpValue: number
-  ) => void;
+  question: {
+    id: string;
+    text: string;
+    section: number;
+    xpValue?: number | null;
+    // Make answers required to match QuizSection’s Question type
+    answers: { id: string; content: string; isCorrect: boolean }[];
+  };
+  onSubmit: HandleAnswer;   // object-arg API from the hook
   isAnswered: boolean;
 }
 
@@ -19,9 +21,12 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const correctAnswer =
-    question.answers.find((ans) => ans.isCorrect)?.content?.trim() || '';
-  const parts: string[] = correctAnswer.split(/\s+/);
-  const lengths = parts.map((p: string) => p.length);
+    (question.answers.find((ans) => ans?.isCorrect)?.content ?? '')
+      .toString()
+      .trim();
+
+  const parts = correctAnswer.split(/\s+/);
+  const lengths = parts.map((part) => part.length);
   const placeholderChar = '-';
 
   const buildDisplay = (typed: string) => {
@@ -67,8 +72,9 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
 
   useLayoutEffect(() => {
     if (inputRef.current) {
-      inputRef.current.selectionStart = getCursorPosition(userAnswer.length);
-      inputRef.current.selectionEnd = inputRef.current.selectionStart;
+      const caret = getCursorPosition(userAnswer.length);
+      inputRef.current.selectionStart = caret;
+      inputRef.current.selectionEnd = caret;
     }
   }, [userAnswer, getCursorPosition]);
 
@@ -77,19 +83,18 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
   }, [isIncorrect]);
 
   function handleSubmit() {
-    const fullUserAnswer = buildFull(userAnswer);
-    if (!fullUserAnswer) return;
+    const full = buildFull(userAnswer);
+    if (!full) return;
 
-    const userNormalized = fullUserAnswer.trim().toLowerCase();
-    const correctNormalized = correctAnswer.trim().toLowerCase();
+    const isCorrect =
+      full.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
 
-    if (userNormalized === correctNormalized) {
-      onSubmit(
-        question.id,
-        fullUserAnswer,     // <-- pass the actual typed value
-        correctAnswer,
-        question.xpValue ?? 10
-      );
+    if (isCorrect) {
+      onSubmit({
+        questionId: question.id,
+        isCorrect: true,
+        xp: question.xpValue ?? 10,
+      });
       setIsIncorrect(false);
     } else {
       setIsIncorrect(true);
@@ -97,8 +102,7 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const cleanedValue = e.target.value.replace(/[- ]/g, '');
-    setUserAnswer(cleanedValue);
+    setUserAnswer(e.target.value.replace(/[- ]/g, ''));
     if (isIncorrect) setIsIncorrect(false);
   }
 
@@ -135,6 +139,17 @@ export function QuestionComponent({ question, onSubmit, isAnswered }: Props) {
     </div>
   );
 }
+
+export default QuestionComponent;
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,83 +1,123 @@
 // src/components/QuizSection.tsx
-import { useCallback } from 'react';
-import { QuestionComponent } from './QuestionComponent';
-import { AccordionSection } from './AccordionSection';
-import type { QuestionUI, ProgressShape } from '../hooks/useQuizData';
+import { useState, useMemo } from 'react';
+import QuestionComponent from './QuestionComponent';
 
-export type SubmitArgs = {
+// Local, minimal arg type to avoid cross-file type imports
+type SubmitArgs = {
   questionId: string;
-  userAnswer: string;
-  correctAnswer: string;
-  xp: number;
   isCorrect: boolean;
+  xp?: number;
 };
 
-interface QuizSectionProps {
+type Question = {
+  id: string;
+  text: string;
+  section: number;
+  xpValue?: number | null;
+  // Keep optional to match upstream shapes
+  answers?: { id: string; content: string; isCorrect: boolean }[];
+};
+
+type ProgressLite = {
+  answeredQuestions: string[];
+};
+
+type Props = {
   title: string;
-  questions: QuestionUI[];
-  progress: ProgressShape;
-  /** Standardize on object-style handler to match parent usage */
+  educationalText?: string;
+  questions: Question[];
+  progress: ProgressLite;
   handleAnswer: (args: SubmitArgs) => void | Promise<void>;
-  isLocked: boolean;
-  initialOpen: boolean;
-  educationalText: string;
-  sectionNumber: number; // retained for compatibility
-}
+  isLocked?: boolean;
+  initialOpen?: boolean;
+};
 
 export function QuizSection({
   title,
+  educationalText = '',
   questions,
   progress,
   handleAnswer,
-  isLocked,
-  initialOpen,
-  educationalText,
-}: QuizSectionProps) {
-  // Adapter: receives positional args from QuestionComponent, forwards object to parent
-  const forwardAnswer = useCallback(
-    (
-      questionId: string,
-      userAnswer: string,
-      correctAnswer: string,
-      xpValue: number
-    ) => {
-      const isCorrect =
-        (userAnswer ?? '').trim().toLowerCase() ===
-        (correctAnswer ?? '').trim().toLowerCase();
+  isLocked = false,
+  initialOpen = false,
+}: Props) {
+  const [open, setOpen] = useState(initialOpen && !isLocked);
 
-      return handleAnswer({
-        questionId,
-        userAnswer,
-        correctAnswer,
-        xp: xpValue ?? 0,
-        isCorrect,
-      });
-    },
-    [handleAnswer]
+  const answeredSet = useMemo(
+    () => new Set(progress?.answeredQuestions ?? []),
+    [progress?.answeredQuestions]
   );
 
   return (
-    <AccordionSection
-      title={title}
-      isLocked={isLocked}
-      initialOpen={initialOpen}
-      educationalText={educationalText}
+    <section
+      style={{
+        border: '1px solid #e5e7eb',
+        borderRadius: 12,
+        background: '#fff',
+        marginBottom: 16,
+        overflow: 'hidden',
+      }}
     >
-      {questions.map((question) => (
-        <QuestionComponent
-          key={question.id}
-          question={question}
-          onSubmit={forwardAnswer}
-          isAnswered={
-            Array.isArray(progress?.answeredQuestions)
-              ? progress.answeredQuestions.includes(question.id)
-              : false
-          }
-        />
-      ))}
-    </AccordionSection>
+      <header
+        onClick={() => !isLocked && setOpen((v) => !v)}
+        style={{
+          cursor: isLocked ? 'not-allowed' : 'pointer',
+          background: isLocked ? '#f9fafb' : '#f3f4f6',
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        <strong style={{ flex: 1 }}>{title}</strong>
+        {isLocked ? <span>🔒</span> : <span>{open ? '▾' : '▸'}</span>}
+      </header>
+
+      {!isLocked && open && (
+        <div style={{ padding: '12px 16px' }}>
+          {educationalText && (
+            <p style={{ marginTop: 0, marginBottom: 12, color: '#4b5563' }}>
+              {educationalText}
+            </p>
+          )}
+
+          {(questions ?? []).length === 0 ? (
+            <div style={{ color: '#6b7280' }}>No questions in this section yet.</div>
+          ) : (
+            questions.map((q) => (
+              <QuestionComponent
+                key={q.id}
+                // safe to pass even if answers is undefined (component handles it)
+                question={q}
+                isAnswered={answeredSet.has(q.id)}
+                onSubmit={handleAnswer}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </section>
   );
 }
+
+export default QuizSection;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

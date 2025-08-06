@@ -6,19 +6,31 @@ import type { QuestionWithAnswers } from '../types/AppContentTypes';
 
 const client = generateClient<Schema>();
 
-type QuestionUI = QuestionWithAnswers & {
-  section: number; // added for section-based grouping/unlocking
+// ⬇️ ADD/CONFIRM these are exported
+export type QuestionUI = QuestionWithAnswers & {
+  section: number;
 };
 
 export type ProgressShape = {
   id: string;
   userId: string;
   totalXP: number;
-  answeredQuestions: string[];   // non-nullable for UI convenience
-  completedSections: number[];   // non-nullable for UI convenience
+  answeredQuestions: string[];
+  completedSections: number[];
   dailyStreak: number;
   lastBlazeAt: string | null;
 };
+
+// ⬇️ ADD this export
+export type HandleAnswer = (
+  questionId: string,
+  userAnswer: string,
+  correctAnswer: string,
+  xpValue: number
+) => void | Promise<void>;
+
+// ...rest of your existing file unchanged...
+
 
 function normalize(str: string) {
   return (str ?? '').trim().toLowerCase();
@@ -187,7 +199,7 @@ export function useQuizData(userId: string) {
   // -------------------------
   // Handle Answer
   // -------------------------
-  const handleAnswer = useCallback(
+  const handleAnswer: HandleAnswer = useCallback(
     async (
       questionId: string,
       userAnswer: string,
@@ -278,6 +290,8 @@ export function useQuizData(userId: string) {
     handleAnswer,
   };
 }
+
+
 
 
 

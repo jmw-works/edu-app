@@ -181,30 +181,11 @@ export default function AuthenticatedContent() {
     progress,
     loading: quizLoading,
     error: quizError,
-    handleAnswer,
+    handleAnswer, // from hook
     orderedSectionNumbers,
   } = useCampaignQuizData(userId, activeCampaignId);
 
-  // ----- Adapter: make legacy 4-arg handleAnswer look like the new 1-arg shape -----
-  type SubmitArgs = { questionId: string; isCorrect: boolean; xp?: number };
-  const submitAnswer = useCallback(
-    async (args: SubmitArgs) => {
-      const fn: any = handleAnswer as any;
-      if (typeof fn !== 'function') return;
-
-      // If hook has been upgraded to the new signature (1 arg), call it directly.
-      if (fn.length <= 1) {
-        return fn(args);
-      }
-
-      // Legacy: (questionId, userAnswer, correctAnswer, xpValue)
-      const ua = args.isCorrect ? 'correct' : 'incorrect';
-      const ca = ua;
-      return fn(args.questionId, ua, ca, args.xp ?? 0);
-    },
-    [handleAnswer]
-  );
-  // -------------------------------------------------------------------------------
+  // NOTE: No local adapter; we pass `handleAnswer` directly.
 
   // Stable safe progress for initial render
   const safeProgress = useMemo(() => {
@@ -339,7 +320,7 @@ export default function AuthenticatedContent() {
           selectionSet: ['id', 'campaignId', 'completed'],
         });
         const progMap = new Map<string, boolean>();
-        for (const r of pRes.data ?? []) {
+        for (const r of (pRes.data ?? [])) {
           if (r.campaignId) progMap.set(r.campaignId, !!r.completed);
         }
 
@@ -826,10 +807,9 @@ export default function AuthenticatedContent() {
                     key={sec.id}
                     title={sec.title}
                     educationalText={sec.educationalText ?? ''}
-                    sectionNumber={sec.number}
                     questions={secQuestions}
                     progress={safeProgress}
-                    handleAnswer={submitAnswer}
+                    handleAnswer={handleAnswer}
                     isLocked={isLocked}
                     initialOpen={initialOpen}
                   />
@@ -863,6 +843,9 @@ export default function AuthenticatedContent() {
     </>
   );
 }
+
+
+
 
 
 
