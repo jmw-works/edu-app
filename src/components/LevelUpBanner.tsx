@@ -1,36 +1,21 @@
 // src/components/LevelUpBanner.tsx
-import { Card, Heading, Text, Button } from '@aws-amplify/ui-react';
+import { Card, Button, Heading, Text } from '@aws-amplify/ui-react';
 
-export interface LevelUpBannerProps {
+type LevelUpBannerProps = {
   currentXP: number;
   maxXP: number;
-  onDismiss: () => void;
-}
+  onDismiss?: () => void;
+};
 
 export default function LevelUpBanner({
   currentXP,
   maxXP,
   onDismiss,
 }: LevelUpBannerProps) {
-  // Calculate current level (Level 1 starts at 0 XP)
-  const level = Math.floor(currentXP / maxXP) + 1;
-
-  let headingText = '';
-  let bodyText = '';
-
-  if (currentXP === 0 && level === 1) {
-    // Starting player
-    headingText = `You're currently Level ${level}`;
-    bodyText = `Clear some bounties to earn your next level. XP Progress: ${currentXP}/${maxXP}`;
-  } else if (currentXP % maxXP === 0 && currentXP !== 0) {
-    // Exact multiple of maxXP — level up moment
-    headingText = `🎉 You Leveled Up!`;
-    bodyText = `Great job! You've reached Level ${level}. XP Progress: ${currentXP}/${maxXP}`;
-  } else {
-    // In-progress
-    headingText = `Level ${level}`;
-    bodyText = `Keep going to reach the next level! XP Progress: ${currentXP}/${maxXP}`;
-  }
+  const pct = Math.max(
+    0,
+    Math.min(100, Math.round((currentXP / Math.max(1, maxXP)) * 100))
+  );
 
   return (
     <Card
@@ -42,19 +27,46 @@ export default function LevelUpBanner({
         background: '#f9fbfd',
         border: '2px solid #3776ff',
         textAlign: 'center',
-        marginTop: 'var(--tg-header-height, 0px)', // respects header height
+        padding: 16,
       }}
     >
-      <Heading level={3} marginBottom="small">
-        {headingText}
-      </Heading>
-      <Text marginBottom="small">{bodyText}</Text>
-      <Button onClick={onDismiss} variation="primary">
-        Continue
-      </Button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div
+          aria-hidden
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 12,
+            display: 'grid',
+            placeItems: 'center',
+            border: '2px solid #3776ff',
+            fontWeight: 800,
+          }}
+        >
+          {pct}%
+        </div>
+
+        <div style={{ textAlign: 'left', flex: 1 }}>
+          <Heading level={4} style={{ margin: 0 }}>
+            Leveling up!
+          </Heading>
+          <Text>
+            You’ve earned <strong>{currentXP}</strong> XP toward{' '}
+            <strong>{maxXP}</strong>. Keep going to unlock the next section.
+          </Text>
+        </div>
+
+        {onDismiss && (
+          <Button onClick={onDismiss} variation="link">
+            Dismiss
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }
+
+
 
 
 

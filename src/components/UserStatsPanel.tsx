@@ -14,36 +14,29 @@ interface UserStatsPanelProps {
   };
   currentXP: number;
   maxXP: number;
-  percentage: number; // 0-100 overall
+  percentage: number; // overall completion; not used for XP math
   headerHeight: number;
   spacing: number;
 }
 
-/**
- * Accessible XP progress bar.
- * Use variant = 'compact' (solid) or 'segmented' (ticks).
- */
+/** Gold, animated XP bar */
 function XPBar({
   percent,
   label,
-  variant = 'compact',
+  fillColor = '#e7bb73', // gold to match header titles
 }: {
-  percent: number; // 0..100
+  percent: number; // 0..100 (fractional allowed)
   label?: string;
-  variant?: 'compact' | 'segmented';
+  fillColor?: string;
 }) {
   const { tokens } = useTheme();
-  const safe = Math.max(0, Math.min(100, Math.round(percent)));
 
-  // Use .value when injecting tokens into inline styles
-  const barBg = tokens.colors.neutral['20'].value;
-  // Brand color: use CSS variable string to stay theme-aware without type issues
-  const barFill = 'var(--amplify-colors-brand-primary-60)';
+  const clamped = Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0;
+  const shown = Math.round(clamped);
+
+  const barBg = tokens.colors.neutral['20'].value; // light gray track
   const barHeight = '12px';
   const radius = tokens.radii.small.value;
-
-  const segments = 10;
-  const activeSegments = Math.round((safe / 100) * segments);
 
   return (
     <div
@@ -51,7 +44,7 @@ function XPBar({
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={safe}
+      aria-valuenow={shown}
       style={{ width: '100%' }}
     >
       {label && (
@@ -60,57 +53,47 @@ function XPBar({
             {label}
           </Text>
           <Text fontSize="0.85rem" color={tokens.colors.font.secondary}>
-            {safe}%
+            {shown}%
           </Text>
         </div>
       )}
 
-      {variant === 'compact' ? (
+      <div
+        style={{
+          width: '100%',
+          height: barHeight,
+          background: barBg,
+          borderRadius: radius,
+          overflow: 'hidden',
+        }}
+      >
         <div
           style={{
-            width: '100%',
-            height: barHeight,
-            background: barBg,
-            borderRadius: radius,
-            overflow: 'hidden',
+            width: `${clamped}%`,
+            height: '100%',
+            background: fillColor,
+            transition: 'width 450ms ease',
           }}
-        >
-          <div
-            style={{
-              width: `${safe}%`,
-              height: '100%',
-              background: barFill,
-              transition: 'width 300ms ease',
-            }}
-          />
-        </div>
-      ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${segments}, 1fr)`,
-            gap: 4,
-            width: '100%',
-          }}
-        >
-          {Array.from({ length: segments }).map((_, i) => {
-            const on = i < activeSegments;
-            return (
-              <div
-                key={i}
-                style={{
-                  height: barHeight,
-                  borderRadius: radius,
-                  background: on ? barFill : barBg,
-                  transition: 'background-color 250ms ease',
-                }}
-              />
-            );
-          })}
-        </div>
-      )}
+        />
+      </div>
     </div>
   );
+}
+
+/** Map user level → Title + Notes (from your table) */
+function getRankForLevel(level: number): { title: string; notes: string; tier: number } {
+  if (level >= 91) return { tier: 12, title: 'Eternal Keeper of Secrets', notes: 'Final endgame grind' };
+  if (level >= 71) return { tier: 11, title: 'Mythic Treasure Hunter', notes: 'Big prestige; XP curve steep' };
+  if (level >= 61) return { tier: 10, title: 'Legendary Expedition Leader', notes: 'Small player % reach here' };
+  if (level >= 51) return { tier: 9, title: 'Lost City Adventurer', notes: 'Feels elite' };
+  if (level >= 41) return { tier: 8, title: 'Tomb Raider', notes: 'Start of serious grind' };
+  if (level >= 31) return { tier: 7, title: 'Artifact Appraiser', notes: 'More commitment required' };
+  if (level >= 21) return { tier: 6, title: 'Crypt Delver', notes: 'Mid-game pace' };
+  if (level >= 16) return { tier: 5, title: 'Temple Cartographer', notes: 'Starts feeling like an achievement' };
+  if (level >= 11) return { tier: 4, title: 'Ruins Explorer', notes: 'Slightly longer per level' };
+  if (level >= 6) return { tier: 3, title: 'Jungle Scout', notes: 'Still feels quick' };
+  if (level >= 2) return { tier: 2, title: 'Desert Pathfinder', notes: 'Very fast to get' };
+  return { tier: 1, title: 'Novice Relic Seeker', notes: 'First login/first XP gain' };
 }
 
 export default function UserStatsPanel({
@@ -123,22 +106,24 @@ export default function UserStatsPanel({
 }: UserStatsPanelProps) {
   const { tokens } = useTheme();
 
-  // Prefer persisted displayName (provided via user.attributes.name)
+  // Defensive defaults
+  const safeXP = Number.isFinite(currentXP) ? Math.max(0, currentXP) : 0;
+  const safeMax = Number.isFinite(maxXP) && maxXP > 0 ? maxXP : 100;
+
+  // Prefer saved display name; fall back to username/email
   const shownName =
     (typeof user.attributes?.name === 'string' && user.attributes.name) ||
     user.username ||
     (typeof user.attributes?.email === 'string' ? user.attributes.email : '') ||
     'N/A';
 
-  // Level math (Level 1 starts at 0 XP; each level requires `maxXP`)
-  const level = Math.floor(currentXP / maxXP) + 1;
-  const currentLevelBase = (level - 1) * maxXP;
-  const progressWithinLevel = currentXP - currentLevelBase; // 0..maxXP-1
-  const nextLevelIn = Math.max(0, maxXP - progressWithinLevel);
-  const levelPercent = Math.max(0, Math.min(100, Math.round((progressWithinLevel / maxXP) * 100)));
+  // Per-level math
+  const level = Math.floor(safeXP / safeMax) + 1;
+  const progressWithinLevel = safeXP % safeMax;
+  const levelPercent = (progressWithinLevel / safeMax) * 100; // fractional for smooth animation
+  const nextLevelIn = Math.max(0, safeMax - progressWithinLevel);
 
-  // Choose bar style: 'compact' | 'segmented'
-  const barVariant: 'compact' | 'segmented' = 'compact';
+  const rank = getRankForLevel(level);
 
   return (
     <View
@@ -152,6 +137,7 @@ export default function UserStatsPanel({
       <Heading level={3} marginBottom="small">
         User Stats
       </Heading>
+
       <Text marginBottom="xxs" color={tokens.colors.font.secondary}>
         Welcome,
       </Text>
@@ -162,15 +148,11 @@ export default function UserStatsPanel({
       <Flex direction="row" alignItems="center" gap="small" marginBottom="small">
         <Badge variation="info">Level {level}</Badge>
         <Text color={tokens.colors.font.secondary} fontSize="0.9rem">
-          {currentXP} / {maxXP * level} XP total
+          {progressWithinLevel}/{safeMax} XP this level
         </Text>
       </Flex>
 
-      <XPBar
-        percent={levelPercent}
-        label={`Progress to Level ${level + 1}`}
-        variant={barVariant}
-      />
+      <XPBar percent={levelPercent} label={`Progress to Level ${level + 1}`} fillColor="#e7bb73" />
 
       <Text marginTop="xs" color={tokens.colors.font.secondary} fontSize="0.9rem">
         {nextLevelIn === 0
@@ -180,17 +162,33 @@ export default function UserStatsPanel({
 
       <Divider marginTop="medium" marginBottom="small" />
 
-      <Text marginBottom="small">
-        Keep the streak going! Earn XP by completing sections and answering questions.
-      </Text>
+      {/* Dynamic Rank Title */}
+      <Flex
+        direction="column"
+        gap="0.25rem"
+        padding="0.75rem"
+        borderRadius="0.75rem"
+        style={{
+          background: 'rgba(231,187,115,0.12)', // subtle gold tint
+          border: '1px solid rgba(231,187,115,0.35)',
+        }}
+        marginBottom="small"
+      >
+        <Text fontSize="0.85rem" color={tokens.colors.font.secondary}>
+          Current Title
+        </Text>
+        <Text
+          fontWeight={800}
+          style={{ fontSize: '1.05rem', color: '#e7bb73', lineHeight: 1.1 }}
+        >
+          {rank.tier} – {rank.title}
+        </Text>
+        <Text fontSize="0.85rem" color={tokens.colors.font.secondary}>
+          {rank.notes}
+        </Text>
+      </Flex>
 
-      <ul style={{ listStyleType: 'none', paddingLeft: 0, marginTop: 0 }}>
-        <li>✔ Enroll in a section</li>
-        <li>✔ Answer a question</li>
-        <li>{percentage >= 100 ? '✔' : '○'} Complete a section</li>
-      </ul>
-
-      <Divider marginTop="medium" marginBottom="small" />
+      <Divider marginTop="small" marginBottom="small" />
 
       <Text color={tokens.colors.font.secondary} fontSize="0.9rem">
         Email: {typeof user.attributes?.email === 'string' ? user.attributes.email : 'N/A'}
@@ -198,6 +196,9 @@ export default function UserStatsPanel({
     </View>
   );
 }
+
+
+
 
 
 

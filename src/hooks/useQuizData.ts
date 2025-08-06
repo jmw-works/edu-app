@@ -2,36 +2,40 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
+import type { QuestionWithAnswers } from '../types/AppContentTypes';
 
 const client = generateClient<Schema>();
 
-/** UI-friendly types for components */
-export type AnswerUI = {
-  id: string;
-  content: string;
-  isCorrect: boolean;
-};
-
-export type QuestionUI = {
-  id: string;
-  text: string;
-  section: number;
-  xpValue?: number | null;
-  answers: AnswerUI[];
+type QuestionUI = QuestionWithAnswers & {
+  section: number; // added for section-based grouping/unlocking
 };
 
 export type ProgressShape = {
   id: string;
   userId: string;
   totalXP: number;
-  answeredQuestions: string[];
-  completedSections: number[];
+  answeredQuestions: string[];   // non-nullable for UI convenience
+  completedSections: number[];   // non-nullable for UI convenience
   dailyStreak: number;
   lastBlazeAt: string | null;
 };
 
 function normalize(str: string) {
   return (str ?? '').trim().toLowerCase();
+}
+
+function startOfDay(d: Date) {
+  const t = new Date(d);
+  t.setHours(0, 0, 0, 0);
+  return t;
+}
+
+// Helpers to coerce DB arrays (which may contain nulls) to non-null arrays for the UI
+function toStringArray(a: (string | null | undefined)[] | null | undefined): string[] {
+  return (a ?? []).filter((x): x is string => typeof x === 'string');
+}
+function toNumberArray(a: (number | null | undefined)[] | null | undefined): number[] {
+  return (a ?? []).filter((n): n is number => typeof n === 'number');
 }
 
 export function useQuizData(userId: string) {
@@ -56,12 +60,12 @@ export function useQuizData(userId: string) {
     (async () => {
       try {
         const res = await client.models.Question.list({
-          // ✅ Use dot-path selectionSet, not nested objects
           selectionSet: [
             'id',
             'text',
             'section',
             'xpValue',
+            'sectionRef.number',
             'answers.id',
             'answers.content',
             'answers.isCorrect',
@@ -73,7 +77,7 @@ export function useQuizData(userId: string) {
         const items: QuestionUI[] = (res?.data ?? []).map((q: any) => ({
           id: q.id,
           text: q.text,
-          section: q.section,
+          section: (q.section ?? q.sectionRef?.number ?? 0) as number,
           xpValue: q.xpValue ?? 10,
           answers:
             (q.answers ?? []).map((a: any) => ({
@@ -123,7 +127,7 @@ export function useQuizData(userId: string) {
 
         let record = (list?.data && list.data[0]) ? list.data[0] : null;
 
-        // ✅ Clean branch: create if missing, then ensure non-null
+        // Create if missing
         if (!record) {
           const created = await client.models.UserProgress.create({
             userId,
@@ -133,9 +137,7 @@ export function useQuizData(userId: string) {
             dailyStreak: 0,
             lastBlazeAt: null,
           });
-          if (!created.data) {
-            throw new Error('Failed to create UserProgress');
-          }
+          if (!created.data) throw new Error('Failed to create UserProgress');
           record = created.data as any;
         }
 
@@ -144,8 +146,8 @@ export function useQuizData(userId: string) {
             id: record.id as string,
             userId: record.userId as string,
             totalXP: (record.totalXP ?? 0) as number,
-            answeredQuestions: (record.answeredQuestions ?? []) as string[],
-            completedSections: (record.completedSections ?? []) as number[],
+            answeredQuestions: toStringArray(record.answeredQuestions as any),
+            completedSections: toNumberArray(record.completedSections as any),
             dailyStreak: (record.dailyStreak ?? 0) as number,
             lastBlazeAt: (record.lastBlazeAt as string | null) ?? null,
           };
@@ -167,6 +169,7 @@ export function useQuizData(userId: string) {
   const sectionToIds = useMemo(() => {
     const map = new Map<number, string[]>();
     for (const q of questions) {
+      if (typeof q.section !== 'number') continue;
       const arr = map.get(q.section) ?? [];
       arr.push(q.id);
       map.set(q.section, arr);
@@ -207,18 +210,37 @@ export function useQuizData(userId: string) {
       let newCompletedSections = progress.completedSections;
       if (section != null) {
         const sectionQIds = sectionToIds.get(section) ?? [];
-        const allInSectionAnswered = sectionQIds.every((id) =>
-          newAnswered.includes(id)
-        );
+        const allInSectionAnswered = sectionQIds.every((id) => newAnswered.includes(id));
         const hasSection = newCompletedSections.includes(section);
         if (allInSectionAnswered && !hasSection) {
           newCompletedSections = [...newCompletedSections, section];
         }
       }
 
-      const newXP = alreadyAnswered
-        ? progress.totalXP
-        : (progress.totalXP ?? 0) + (xpValue ?? 10);
+      // XP: do not double-award for re-answers of the same question
+      const award = Number.isFinite(xpValue) ? xpValue : (question?.xpValue ?? 10);
+      const newXP = alreadyAnswered ? progress.totalXP : (progress.totalXP ?? 0) + award;
+
+      // --- Streak update (local calendar day) ---
+      const now = new Date();
+      const todayStart = startOfDay(now);
+      const last = progress.lastBlazeAt ? new Date(progress.lastBlazeAt) : null;
+      let newDailyStreak = progress.dailyStreak ?? 0;
+
+      if (!last) {
+        newDailyStreak = 1;
+      } else {
+        const lastStart = startOfDay(last);
+        const diffDays = Math.floor((todayStart.getTime() - lastStart.getTime()) / 86400000);
+        if (diffDays === 1) {
+          newDailyStreak = Math.max(1, newDailyStreak) + 1;
+        } else if (diffDays > 1) {
+          newDailyStreak = 1;
+        } else {
+          newDailyStreak = Math.max(1, newDailyStreak);
+        }
+      }
+      const newLastBlazeAt = now.toISOString();
 
       // Optimistic UI
       const optimistic: ProgressShape = {
@@ -226,6 +248,8 @@ export function useQuizData(userId: string) {
         totalXP: newXP,
         answeredQuestions: newAnswered,
         completedSections: newCompletedSections,
+        dailyStreak: newDailyStreak,
+        lastBlazeAt: newLastBlazeAt,
       };
       setProgress(optimistic);
 
@@ -235,10 +259,11 @@ export function useQuizData(userId: string) {
           totalXP: newXP,
           answeredQuestions: newAnswered,
           completedSections: newCompletedSections,
+          dailyStreak: newDailyStreak,
+          lastBlazeAt: newLastBlazeAt,
         });
       } catch (e) {
-        // Roll back on failure
-        setProgress(progress);
+        setProgress(progress); // rollback
         setErr(e as Error);
       }
     },
@@ -253,6 +278,10 @@ export function useQuizData(userId: string) {
     handleAnswer,
   };
 }
+
+
+
+
 
 
 
