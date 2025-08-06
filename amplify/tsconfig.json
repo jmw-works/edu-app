@@ -1,21 +1,26 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "CommonJS",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "jsx": "react-jsx",
     "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["./**/*.ts"],
+  "include": [
+    "src/**/*",
+    "amplify/**/*"
+  ],
   "exclude": [
-    "../node_modules",
-    "../src",
-    "./**/node_modules",
-    "./dist",
-    "./build"
+    "node_modules",
+    "dist",
+    "build"
   ]
 }
+
 
 
 
