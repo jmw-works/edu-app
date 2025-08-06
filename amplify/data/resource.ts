@@ -9,16 +9,16 @@ const schema = a.schema({
   Campaign: a
     .model({
       id: a.id().required(),
-      slug: a.string().required(),            // keep as before if you already have slugs
+      slug: a.string().required(),
       title: a.string().required(),
       description: a.string(),
       order: a.integer().default(0),
       isActive: a.boolean().default(true),
 
-      // New (optional) thumbnail fields — safe for existing data
-      thumbnailKey: a.string(),               // S3 key (e.g., "campaign-thumbnails/foo.jpg")
-      thumbnailUrl: a.string(),               // optional absolute URL fallback
-      thumbnailAlt: a.string(),               // accessible alt text
+      // Optional thumbnails
+      thumbnailKey: a.string(),
+      thumbnailUrl: a.string(),
+      thumbnailAlt: a.string(),
 
       sections: a.hasMany('Section', 'campaignId'),
     })
@@ -32,16 +32,15 @@ const schema = a.schema({
       campaignId: a.id().required(),
       campaign: a.belongsTo('Campaign', 'campaignId'),
 
-      // Keep legacy numeric section index (existing UI depends on it)
+      // Legacy numeric index used by UI
       number: a.integer().required(),
 
-      // Make these OPTIONAL to avoid breaking existing rows
       title: a.string(),
       educationalText: a.string(),
       order: a.integer().default(0),
       isActive: a.boolean().default(true),
 
-      // New unlock controls kept OPTIONAL (no default to avoid migration issues)
+      // Optional unlock controls
       unlockRule: a.enum(['ALL_PREV_CORRECT', 'PERCENT', 'MANUAL']),
       unlockThreshold: a.integer().default(100),
 
@@ -55,10 +54,10 @@ const schema = a.schema({
     .model({
       id: a.id().required(),
 
-      // Legacy field still available for your current filters
+      // Legacy field for compatibility
       section: a.integer(),
 
-      // Future-proof relational link (optional so existing data keeps working)
+      // Relational link (preferred)
       sectionId: a.id(),
       sectionRef: a.belongsTo('Section', 'sectionId'),
 
@@ -89,7 +88,7 @@ const schema = a.schema({
     ]),
 
   // ------------------------------------------------------------
-  // User-owned state and progress (unchanged)
+  // User-owned state and progress
   // ------------------------------------------------------------
 
   UserProfile: a
@@ -110,7 +109,6 @@ const schema = a.schema({
       userId: a.string().required(),
       totalXP: a.integer().default(0),
 
-      // Gen2 emits Nullable<T>[]; your hooks already normalize these
       answeredQuestions: a.string().array(),
       completedSections: a.integer().array(),
 
@@ -145,7 +143,7 @@ const schema = a.schema({
       allow.owner().to(['create', 'read', 'update', 'delete']),
     ]),
 
-  // Optional legacy model kept intact
+  // Optional legacy model
   UserStats: a
     .model({
       id: a.id().required(),
@@ -167,18 +165,3 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,36 +1,21 @@
 // src/components/QuizSection.tsx
 import { useState, useMemo } from 'react';
 import QuestionComponent from './QuestionComponent';
-
-// Local, minimal arg type to avoid cross-file type imports
-type SubmitArgs = {
-  questionId: string;
-  isCorrect: boolean;
-  xp?: number;
-};
-
-type Question = {
-  id: string;
-  text: string;
-  section: number;
-  xpValue?: number | null;
-  // Keep optional to match upstream shapes
-  answers?: { id: string; content: string; isCorrect: boolean }[];
-};
+import type { Question, HandleAnswer } from '../types/QuestionTypes';
 
 type ProgressLite = {
   answeredQuestions: string[];
 };
 
-type Props = {
+interface QuizSectionProps {
   title: string;
   educationalText?: string;
-  questions: Question[];
+  questions: Question[]; // answers required
   progress: ProgressLite;
-  handleAnswer: (args: SubmitArgs) => void | Promise<void>;
+  handleAnswer: HandleAnswer;
   isLocked?: boolean;
   initialOpen?: boolean;
-};
+}
 
 export function QuizSection({
   title,
@@ -40,7 +25,7 @@ export function QuizSection({
   handleAnswer,
   isLocked = false,
   initialOpen = false,
-}: Props) {
+}: QuizSectionProps) {
   const [open, setOpen] = useState(initialOpen && !isLocked);
 
   const answeredSet = useMemo(
@@ -81,13 +66,12 @@ export function QuizSection({
             </p>
           )}
 
-          {(questions ?? []).length === 0 ? (
+          {questions.length === 0 ? (
             <div style={{ color: '#6b7280' }}>No questions in this section yet.</div>
           ) : (
             questions.map((q) => (
               <QuestionComponent
                 key={q.id}
-                // safe to pass even if answers is undefined (component handles it)
                 question={q}
                 isAnswered={answeredSet.has(q.id)}
                 onSubmit={handleAnswer}
@@ -101,6 +85,9 @@ export function QuizSection({
 }
 
 export default QuizSection;
+
+
+
 
 
 

@@ -1,39 +1,27 @@
 // src/hooks/useCampaignQuizData.ts
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Schema } from '../../amplify/data/resource';
 import { useAmplifyClient } from './useAmplifyClient';
+import type {
+  Question as QuestionUI,
+  HandleAnswer,
+  SubmitArgs,
+} from '../types/QuestionTypes';
 
-type AnswerUI = {
-  id: string;
-  content: string;
-  isCorrect: boolean;
-};
-
-type QuestionUI = {
-  id: string;
-  text: string;
-  section: number;           // numeric “number” from Section
-  xpValue?: number | null;
-  answers: AnswerUI[];
-};
-
-export type ProgressShape = {
+type ProgressShape = {
   id: string;
   userId: string;
   totalXP: number;
-  answeredQuestions: string[];   // global list
-  completedSections: number[];   // derived for the active campaign
+  answeredQuestions: string[];
+  completedSections: number[];
   dailyStreak: number;
   lastBlazeAt: string | null;
 };
 
-function normalize(str: string) { return (str ?? '').trim().toLowerCase(); }
 function startOfDay(d: Date) { const t = new Date(d); t.setHours(0, 0, 0, 0); return t; }
 function toStringArray(a: (string | null | undefined)[] | null | undefined): string[] {
   return (a ?? []).filter((x): x is string => typeof x === 'string');
 }
 
-/** Build an Amplify filter that matches any of the given ids for the provided field name (Gen2 doesn’t support `in`). */
 function buildOrIdFilter(fieldName: 'sectionId' | 'campaignId', ids: string[]) {
   if (ids.length === 0) return undefined;
   if (ids.length === 1) return { [fieldName]: { eq: ids[0] } } as any;
@@ -41,7 +29,7 @@ function buildOrIdFilter(fieldName: 'sectionId' | 'campaignId', ids: string[]) {
 }
 
 export function useCampaignQuizData(userId: string, activeCampaignId?: string | null) {
-  const client = useAmplifyClient(); // <-- typed client created after Amplify.configure
+  const client = useAmplifyClient();
   const [questions, setQuestions] = useState<QuestionUI[]>([]);
   const [progressBase, setProgressBase] = useState<Omit<ProgressShape, 'completedSections'> | null>(null);
   const [completedSectionNumbers, setCompletedSectionNumbers] = useState<number[]>([]);
@@ -53,16 +41,12 @@ export function useCampaignQuizData(userId: string, activeCampaignId?: string | 
   const mountedRef = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
-  // -------- Load sections + questions + SectionProgress for the active campaign
   useEffect(() => {
     let cancelled = false;
-
     async function loadContentForCampaign(campaignId: string) {
-      // start content loading
       setLoading(true);
       setErr(null);
       try {
-        // 1) Sections for this campaign
         const sRes = await client.models.Section.list({
           filter: { campaignId: { eq: campaignId } },
           selectionSet: ['id', 'number', 'order', 'isActive'],
@@ -70,10 +54,7 @@ export function useCampaignQuizData(userId: string, activeCampaignId?: string | 
 
         const sections = (sRes.data ?? [])
           .filter((s) => s.isActive !== false)
-          .sort(
-            (a, b) =>
-              (a.order ?? a.number ?? 0) - (b.order ?? b.number ?? 0)
-          );
+          .sort((a, b) => (a.order ?? a.number ?? 0) - (b.order ?? b.number ?? 0));
 
         const numToId = new Map<number, string>();
         const orderedNums: number[] = [];
@@ -95,19 +76,12 @@ export function useCampaignQuizData(userId: string, activeCampaignId?: string | 
           return;
         }
 
-        // 2) Questions for these sections (use OR-of-eq filter)
         const qFilter = buildOrIdFilter('sectionId', sectionIds);
         const qRes = await client.models.Question.list({
           ...(qFilter ? { filter: qFilter } : {}),
           selectionSet: [
-            'id',
-            'text',
-            'section',          // legacy numeric field (fallback)
-            'xpValue',
-            'sectionRef.number',// relational numeric section number
-            'answers.id',
-            'answers.content',
-            'answers.isCorrect',
+            'id', 'text', 'section', 'xpValue', 'sectionRef.number',
+            'answers.id', 'answers.content', 'answers.isCorrect',
           ],
         });
 
@@ -122,15 +96,11 @@ export function useCampaignQuizData(userId: string, activeCampaignId?: string | 
             isCorrect: !!a.isCorrect,
           })),
         }));
-
         if (!cancelled) setQuestions(qs);
 
-        // 3) SectionProgress -> which sections are completed by this user (for THIS campaign)
         const spBaseFilter = buildOrIdFilter('sectionId', sectionIds);
         const spRes = await client.models.SectionProgress.list({
-          filter: spBaseFilter
-            ? { and: [{ userId: { eq: userId } }, spBaseFilter] }
-            : { userId: { eq: userId } },
+          filter: spBaseFilter ? { and: [{ userId: { eq: userId } }, spBaseFilter] } : { userId: { eq: userId } },
           selectionSet: ['sectionId', 'completed'],
         });
 
@@ -149,7 +119,6 @@ export function useCampaignQuizData(userId: string, activeCampaignId?: string | 
       }
     }
 
-    // reset if no campaign
     if (!activeCampaignId) {
       setQuestions([]);
       setCompletedSectionNumbers([]);
@@ -160,29 +129,19 @@ export function useCampaignQuizData(userId: string, activeCampaignId?: string | 
     }
 
     loadContentForCampaign(activeCampaignId);
-
     return () => { cancelled = true; };
   }, [activeCampaignId, userId, client]);
 
-  // -------- Load (or create) global UserProgress
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
-
     async function loadProgress() {
       setLoading(true);
       setErr(null);
       try {
         const list = await client.models.UserProgress.list({
           filter: { userId: { eq: userId } },
-          selectionSet: [
-            'id',
-            'userId',
-            'totalXP',
-            'answeredQuestions',
-            'dailyStreak',
-            'lastBlazeAt',
-          ],
+          selectionSet: ['id', 'userId', 'totalXP', 'answeredQuestions', 'dailyStreak', 'lastBlazeAt'],
         });
 
         let row = list.data?.[0] ?? null;
@@ -218,7 +177,6 @@ export function useCampaignQuizData(userId: string, activeCampaignId?: string | 
     return () => { cancelled = true; };
   }, [userId, client]);
 
-  // -------- Lookups
   const sectionToIds = useMemo(() => {
     const map = new Map<number, string[]>();
     for (const q of questions) {
@@ -240,121 +198,79 @@ export function useCampaignQuizData(userId: string, activeCampaignId?: string | 
     setCompletedSectionNumbers((prev) => (prev.includes(n) ? prev : [...prev, n]));
   }, []);
 
-  // -------- Answer flow (compatible with existing QuestionComponent)
-  const handleAnswer = useCallback(
-    async (questionId: string, userAnswer: string, correctAnswer: string, xpValue: number) => {
-      if (!progressBase || !userId) return;
+  const handleAnswer: HandleAnswer = useCallback(async ({ questionId, isCorrect, xp }: SubmitArgs) => {
+    if (!progressBase || !userId) return;
+    if (!isCorrect) return;
 
-      const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
-      if (!isCorrect) return;
+    const alreadyAnswered = progressBase.answeredQuestions.includes(questionId);
+    const newAnswered = alreadyAnswered ? progressBase.answeredQuestions : [...progressBase.answeredQuestions, questionId];
 
-      const alreadyAnswered = progressBase.answeredQuestions.includes(questionId);
-      const newAnswered = alreadyAnswered
-        ? progressBase.answeredQuestions
-        : [...progressBase.answeredQuestions, questionId];
+    const question = byId.get(questionId);
+    const sectionNum = question?.section ?? null;
 
-      const question = byId.get(questionId);
-      const sectionNum = question?.section ?? null;
+    if (sectionNum != null) {
+      const qIds = sectionToIds.get(sectionNum) ?? [];
+      const allAnswered = qIds.every((id) => newAnswered.includes(id));
 
-      // per-campaign section completion
-      if (sectionNum != null) {
-        const qIds = sectionToIds.get(sectionNum) ?? [];
-        const allAnswered = qIds.every((id) => newAnswered.includes(id));
-
-        // upsert SectionProgress for this sectionId
-        const sectionId = sectionIdByNumber.get(sectionNum);
-        if (sectionId) {
-          const list = await client.models.SectionProgress.list({
-            filter: { and: [{ userId: { eq: userId } }, { sectionId: { eq: sectionId } }] },
-            selectionSet: ['id', 'completed'],
-          });
-          const row = list.data?.[0] ?? null;
-          if (row) {
-            if (row.completed !== allAnswered) {
-              await client.models.SectionProgress.update({ id: row.id, completed: allAnswered });
-            }
-          } else {
-            await client.models.SectionProgress.create({ userId, sectionId, completed: allAnswered });
+      const sectionId = sectionIdByNumber.get(sectionNum);
+      if (sectionId) {
+        const list = await client.models.SectionProgress.list({
+          filter: { and: [{ userId: { eq: userId } }, { sectionId: { eq: sectionId } }] },
+          selectionSet: ['id', 'completed'],
+        });
+        const row = list.data?.[0] ?? null;
+        if (row) {
+          if (row.completed !== allAnswered) {
+            await client.models.SectionProgress.update({ id: row.id, completed: allAnswered });
           }
+        } else {
+          await client.models.SectionProgress.create({ userId, sectionId, completed: allAnswered });
         }
-        if (allAnswered) pushCompletedSection(sectionNum);
       }
+      if (allAnswered) pushCompletedSection(sectionNum);
+    }
 
-      // Global XP + streak
-      const award = Number.isFinite(xpValue) ? xpValue : (question?.xpValue ?? 10);
-      const newXP = alreadyAnswered ? progressBase.totalXP : (progressBase.totalXP ?? 0) + award;
+    const award = Number.isFinite(xp as number) ? (xp as number) : (question?.xpValue ?? 10);
+    const newXP = alreadyAnswered ? progressBase.totalXP : (progressBase.totalXP ?? 0) + award;
 
-      const now = new Date();
-      const todayStart = startOfDay(now);
-      const last = progressBase.lastBlazeAt ? new Date(progressBase.lastBlazeAt) : null;
-      let newDailyStreak = progressBase.dailyStreak ?? 0;
-      if (!last) newDailyStreak = 1;
-      else {
-        const lastStart = startOfDay(last);
-        const diff = Math.floor((todayStart.getTime() - lastStart.getTime()) / 86400000);
-        if (diff === 1) newDailyStreak = Math.max(1, newDailyStreak) + 1;
-        else if (diff > 1) newDailyStreak = 1;
-        else newDailyStreak = Math.max(1, newDailyStreak);
-      }
-      const newLastBlazeAt = now.toISOString();
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const last = progressBase.lastBlazeAt ? new Date(progressBase.lastBlazeAt) : null;
+    let newDailyStreak = progressBase.dailyStreak ?? 0;
+    if (!last) newDailyStreak = 1;
+    else {
+      const lastStart = startOfDay(last);
+      const diff = Math.floor((todayStart.getTime() - lastStart.getTime()) / 86400000);
+      if (diff === 1) newDailyStreak = Math.max(1, newDailyStreak) + 1;
+      else if (diff > 1) newDailyStreak = 1;
+      else newDailyStreak = Math.max(1, newDailyStreak);
+    }
+    const newLastBlazeAt = now.toISOString();
 
-      // optimistic base update
-      const optimisticBase = {
-        ...progressBase,
+    const optimisticBase = {
+      ...progressBase,
+      totalXP: newXP,
+      answeredQuestions: newAnswered,
+      dailyStreak: newDailyStreak,
+      lastBlazeAt: newLastBlazeAt,
+    };
+    setProgressBase(optimisticBase);
+
+    try {
+      await client.models.UserProgress.update({
+        id: progressBase.id,
         totalXP: newXP,
         answeredQuestions: newAnswered,
         dailyStreak: newDailyStreak,
         lastBlazeAt: newLastBlazeAt,
-      };
-      setProgressBase(optimisticBase);
+      });
+    } catch (e) {
+      console.warn('Failed to persist answer/progress', e);
+    }
+  }, [
+    progressBase, userId, byId, sectionToIds, sectionIdByNumber, pushCompletedSection, client
+  ]);
 
-      try {
-        await client.models.UserProgress.update({
-          id: progressBase.id,
-          totalXP: newXP,
-          answeredQuestions: newAnswered,
-          dailyStreak: newDailyStreak,
-          lastBlazeAt: newLastBlazeAt,
-        });
-
-        // If campaign fully completed, mark it so (unlocks the next campaign)
-        if (activeCampaignId && orderedSectionNumbers.length > 0) {
-          const allDone = orderedSectionNumbers.every(
-            (n) => completedSectionNumbers.includes(n) || (sectionNum === n)
-          );
-          if (allDone) {
-            const cList = await client.models.CampaignProgress.list({
-              filter: { and: [{ userId: { eq: userId } }, { campaignId: { eq: activeCampaignId } }] },
-              selectionSet: ['id', 'completed'],
-            });
-            const row = cList.data?.[0] ?? null;
-            if (row) {
-              if (!row.completed) await client.models.CampaignProgress.update({ id: row.id, completed: true });
-            } else {
-              await client.models.CampaignProgress.create({ userId, campaignId: activeCampaignId, completed: true });
-            }
-          }
-        }
-      } catch (e) {
-        // keep optimistic UI; logs help if needed
-        console.warn('Failed to persist answer/progress', e);
-      }
-    },
-    [
-      progressBase,
-      userId,
-      byId,
-      sectionToIds,
-      sectionIdByNumber,
-      pushCompletedSection,
-      activeCampaignId,
-      orderedSectionNumbers,
-      completedSectionNumbers,
-      client,
-    ]
-  );
-
-  // -------- Compose per-campaign progress for the UI
   const uiProgress: ProgressShape | null = useMemo(() => {
     if (!progressBase) return null;
     return { ...progressBase, completedSections: completedSectionNumbers };
@@ -369,7 +285,3 @@ export function useCampaignQuizData(userId: string, activeCampaignId?: string | 
     orderedSectionNumbers,
   };
 }
-
-
-
-

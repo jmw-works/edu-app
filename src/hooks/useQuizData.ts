@@ -6,7 +6,8 @@ import type { QuestionWithAnswers } from '../types/AppContentTypes';
 
 const client = generateClient<Schema>();
 
-// ⬇️ ADD/CONFIRM these are exported
+// ---- Public types (single source of truth) ----
+
 export type QuestionUI = QuestionWithAnswers & {
   section: number;
 };
@@ -21,16 +22,16 @@ export type ProgressShape = {
   lastBlazeAt: string | null;
 };
 
-// ⬇️ ADD this export
-export type HandleAnswer = (
-  questionId: string,
-  userAnswer: string,
-  correctAnswer: string,
-  xpValue: number
-) => void | Promise<void>;
+// New unified object-arg signature for answering a question
+export type SubmitArgs = {
+  questionId: string;
+  isCorrect: boolean;
+  xp?: number;
+};
 
-// ...rest of your existing file unchanged...
+export type HandleAnswer = (args: SubmitArgs) => void | Promise<void>;
 
+// ---- Local helpers ----
 
 function normalize(str: string) {
   return (str ?? '').trim().toLowerCase();
@@ -50,6 +51,8 @@ function toNumberArray(a: (number | null | undefined)[] | null | undefined): num
   return (a ?? []).filter((n): n is number => typeof n === 'number');
 }
 
+// ---- Hook ----
+
 export function useQuizData(userId: string) {
   const [questions, setQuestions] = useState<QuestionUI[]>([]);
   const [progress, setProgress] = useState<ProgressShape | null>(null);
@@ -64,9 +67,7 @@ export function useQuizData(userId: string) {
     };
   }, []);
 
-  // -------------------------
   // Load Questions
-  // -------------------------
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -109,9 +110,7 @@ export function useQuizData(userId: string) {
     };
   }, []);
 
-  // -------------------------
   // Load or create UserProgress
-  // -------------------------
   useEffect(() => {
     if (!userId) return;
 
@@ -197,19 +196,14 @@ export function useQuizData(userId: string) {
   }, [questions]);
 
   // -------------------------
-  // Handle Answer
+  // Handle Answer (new object-arg API)
   // -------------------------
   const handleAnswer: HandleAnswer = useCallback(
-    async (
-      questionId: string,
-      userAnswer: string,
-      correctAnswer: string,
-      xpValue: number
-    ) => {
+    async ({ questionId, isCorrect, xp }: SubmitArgs) => {
       if (!progress || !userId) return;
 
-      const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
-      if (!isCorrect) return; // UI shows "Wrong!" — no persistence
+      // Only persist on correct answers (keeps previous behavior)
+      if (!isCorrect) return;
 
       const alreadyAnswered = progress.answeredQuestions.includes(questionId);
       const newAnswered = alreadyAnswered
@@ -230,7 +224,9 @@ export function useQuizData(userId: string) {
       }
 
       // XP: do not double-award for re-answers of the same question
-      const award = Number.isFinite(xpValue) ? xpValue : (question?.xpValue ?? 10);
+      const award = Number.isFinite(xp as number)
+        ? (xp as number)
+        : (question?.xpValue ?? 10);
       const newXP = alreadyAnswered ? progress.totalXP : (progress.totalXP ?? 0) + award;
 
       // --- Streak update (local calendar day) ---
@@ -290,6 +286,7 @@ export function useQuizData(userId: string) {
     handleAnswer,
   };
 }
+
 
 
 
