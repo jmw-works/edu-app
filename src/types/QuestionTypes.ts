@@ -15,7 +15,8 @@ export interface Question {
   text: string;
   section: number;
   xpValue?: number | null;
-  answers: Answer[]; // ← required
+  educationalText?: string; // ← ✅ Add this line
+  answers: Answer[];
 }
 
 /** Object-based answer submission payload (shared across app). */

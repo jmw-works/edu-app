@@ -1,4 +1,3 @@
-// src/pages/AuthenticatedContent.tsx
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   useAuthenticator,
@@ -12,7 +11,7 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 
 import { Header } from '../components/Header';
-import { QuizSection } from '../components/QuizSection';
+import QuizSection from '../components/QuizSection';
 import LevelUpBanner from '../components/LevelUpBanner';
 import UserStatsPanel from '../components/UserStatsPanel';
 import { SetDisplayNameModal } from '../components/SetDisplayNameModal';
@@ -21,14 +20,6 @@ import { useUserProfile } from '../hooks/useUserProfile';
 import { useCampaignQuizData } from '../hooks/useCampaignQuizData';
 import { useHeaderHeight } from '../hooks/useHeaderHeight';
 import { calculateXPProgress } from '../utils/xp';
-
-type CampaignCard = {
-  id: string;
-  title: string;
-  description?: string | null;
-  thumbnailFile?: string; // filename only
-  isLocked?: boolean;
-};
 
 const THUMBNAIL_BASE_URL =
   'https://amplify-dg9xethdak0e7-mai-amplifydataamplifycodege-5wzlzqzwsqsa.s3.us-west-1.amazonaws.com/public/thumbnails';
@@ -46,7 +37,7 @@ export default function AuthenticatedContent() {
   const [attrs, setAttrs] = useState<Record<string, string> | null>(null);
   const [attrsError, setAttrsError] = useState<Error | null>(null);
 
-  const [campaigns, setCampaigns] = useState<CampaignCard[]>([]);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
   const [showBanner, setShowBanner] = useState(true);
   const [showNameModal, setShowNameModal] = useState(false);
@@ -61,7 +52,10 @@ export default function AuthenticatedContent() {
     loading: quizLoading,
     error: quizError,
     handleAnswer,
-  } = useCampaignQuizData(userId, activeCampaignId);
+    orderedSectionNumbers,
+    } = useCampaignQuizData(userId, activeCampaignId);
+  const { sectionTextByNumber } = useCampaignQuizData(userId, activeCampaignId);
+
 
   const emailFromAttrs: string | null = attrs?.email ?? null;
 
@@ -72,7 +66,6 @@ export default function AuthenticatedContent() {
     updateDisplayName,
   } = useUserProfile(userId, emailFromAttrs);
 
-  // Fetch user attributes
   useEffect(() => {
     let mounted = true;
     if (authStatus !== 'authenticated') return;
@@ -86,7 +79,6 @@ export default function AuthenticatedContent() {
     };
   }, [authStatus]);
 
-  // Fetch real campaign data from Amplify Data
   useEffect(() => {
     async function loadCampaigns() {
       try {
@@ -96,12 +88,12 @@ export default function AuthenticatedContent() {
 
         if (errors) console.error('Campaign list errors:', errors);
 
-        const parsed: CampaignCard[] = (data ?? []).map((c) => ({
+        const parsed = (data ?? []).map((c) => ({
           id: c.id,
           title: c.title,
           description: c.description ?? '',
           thumbnailFile: c.thumbnailKey ?? '',
-          isLocked: false, // update logic later if needed
+          isLocked: false,
         }));
 
         setCampaigns(parsed);
@@ -118,9 +110,7 @@ export default function AuthenticatedContent() {
   const displayName = useMemo(() => {
     const fromProfile = (profile?.displayName ?? '').trim();
     if (fromProfile) return fromProfile;
-    if (emailFromAttrs && emailFromAttrs.includes('@')) {
-      return emailFromAttrs.split('@')[0]!;
-    }
+    if (emailFromAttrs?.includes('@')) return emailFromAttrs.split('@')[0]!;
     return 'Friend';
   }, [profile?.displayName, emailFromAttrs]);
 
@@ -170,6 +160,15 @@ export default function AuthenticatedContent() {
     setActiveCampaignId(id);
   }, []);
 
+  const groupedBySection = useMemo(() => {
+    const map = new Map<number, ReturnType<typeof questions.filter>>();
+    for (const q of questions) {
+      const list = map.get(q.section) ?? [];
+      map.set(q.section, [...list, q]);
+    }
+    return map;
+  }, [questions]);
+
   if (authStatus !== 'authenticated') return null;
 
   return (
@@ -202,66 +201,110 @@ export default function AuthenticatedContent() {
 
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, padding: `0 ${spacing}px` }}>
           {!activeCampaignId && (
-            <div style={{ width: 130, display: 'flex', flexDirection: 'column', gap: 24 }}>
-              {campaigns.map((campaign) => {
-                const isLocked = campaign.isLocked;
-                const imgUrl = campaign.thumbnailFile
-                  ? `${THUMBNAIL_BASE_URL}/${campaign.thumbnailFile}`
-                  : '';
+            <div style={{ width: 260, display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {campaigns.length > 0 ? (
+  campaigns.map((campaign) => {
+    const imgUrl = campaign.thumbnailFile
+      ? `${THUMBNAIL_BASE_URL}/${campaign.thumbnailFile}`
+      : '';
+    return (
+      <div
+        key={campaign.id}
+        onClick={() => onSelectCampaign(campaign.id, campaign.isLocked)}
+        style={{
+          opacity: campaign.isLocked ? 0.4 : 1,
+          cursor: campaign.isLocked ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+        }}
+        title={campaign.description || ''}
+      >
+        {imgUrl ? (
+          <img
+            src={imgUrl}
+            alt={campaign.title}
+            width={200}
+            height={200}
+            style={{ objectFit: 'contain', marginBottom: 12 }}
+          />
+        ) : (
+          <div style={{ width: 180, height: 200, background: '#eee', marginBottom: 12 }} />
+        )}
+        <Text fontSize="1rem">{campaign.title}</Text>
+      </div>
+    );
+  })
+) : (
+  ['campaign1.png', 'campaign2.png', 'campaign3.png'].map((filename, idx) => (
+    <div
+      key={`fallback-${idx}`}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        cursor: 'default',
+      }}
+    >
+      <img
+        src={`/${filename}`}
+        alt={`Fallback ${idx + 1}`}
+        width={200}
+        height={200}
+        style={{ objectFit: 'contain', marginBottom: 12 }}
+      />
+      <Text fontSize="1rem" color="#888">
+        Coming Soon
+      </Text>
+    </div>
+  ))
+)}
 
-                return (
-                  <div
-                    key={campaign.id}
-                    onClick={() => onSelectCampaign(campaign.id, isLocked)}
-                    style={{
-                      opacity: isLocked ? 0.4 : 1,
-                      cursor: isLocked ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      textAlign: 'center',
-                      position: 'relative',
-                    }}
-                    title={campaign.description || ''}
-                  >
-                    {imgUrl ? (
-                      <img
-                        src={imgUrl}
-                        alt={campaign.title}
-                        width={100}
-                        height={100}
-                        style={{
-                          objectFit: 'contain',
-                          marginBottom: 8,
-                        }}
-                      />
-                    ) : (
-                      <div style={{ width: 100, height: 100, background: '#eee', marginBottom: 8 }} />
-                    )}
-                    <Text fontSize="0.75rem">{campaign.title}</Text>
-                  </div>
-                );
-              })}
             </div>
           )}
 
           <div style={{ flex: 2 }}>
-            <div style={{ marginBottom: 16 }}>
-              <Heading level={2}>Hey {displayName}! Let&apos;s jump in.</Heading>
-            </div>
+  <div style={{ marginBottom: 16, textAlign: 'center' }}>
+    <Heading level={2}>Hey {displayName}! Let&apos;s jump in.</Heading>
+    <Text fontSize="1rem" style={{ marginTop: 8, color: '#444' }}>
+      Discover a world of learning and adventure as you hone your treasure hunting skills.
+    </Text>
+    <img
+      src="/adventure_is_out_there.png"
+      alt="Adventure is out there"
+      style={{
+        marginTop: 24,
+        width: '85%', // 15% smaller than full width
+        maxWidth: 600,
+        height: 'auto',
+      }}
+    />
+  </div>
+
+
+
             {activeCampaignId &&
-              questions.map((question) => (
-                <QuizSection
-                  key={question.id}
-                  title={`Section ${question.section}`}
-                  educationalText=""
-                  questions={[question]}
-                  progress={safeProgress}
-                  handleAnswer={handleAnswer}
-                  isLocked={false}
-                  initialOpen={true}
-                />
-              ))}
+              orderedSectionNumbers.map((sectionNum, idx) => {
+                const questionsInSection = groupedBySection.get(sectionNum) ?? [];
+                const isLocked = safeProgress.completedSections.includes(sectionNum) === false &&
+                                 sectionNum !== orderedSectionNumbers[0] &&
+                                 !safeProgress.completedSections.includes(orderedSectionNumbers[idx - 1]);
+
+                return (
+                  <QuizSection
+                    key={`sec-${sectionNum}`}
+                    title={`Section ${sectionNum}`}
+                    educationalText={sectionTextByNumber.get(sectionNum) ?? ''}
+                    questions={questionsInSection}
+                    progress={safeProgress}
+                    handleAnswer={handleAnswer}
+                    isLocked={isLocked}
+                    initialOpen={idx === 0}
+                  />
+                );
+              })}
           </div>
 
           <UserStatsPanel
@@ -284,6 +327,7 @@ export default function AuthenticatedContent() {
     </>
   );
 }
+
 
 
 
